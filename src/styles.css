@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-bg: #0c0d0f;
+  --color-surface: #14161a;
+  --color-surface-2: #1b1e24;
+  --color-surface-3: #232830;
+  --color-fg: #e8e6e1;
+  --color-muted: #8b8e96;
+  --color-subtle: #5c6068;
+  --color-border: #2a2e35;
+  --color-border-strong: #3d434c;
+  --color-led: #e8a45a;
+  --color-led-dim: #4a3420;
+  --color-play: #d7c4a0;
+  --color-danger: #c45c4a;
+  --color-ok: #6a9a72;
+  --color-family-kick: #c4845a;
+  --color-family-snare: #c8bba8;
+  --color-family-hat: #7d93a3;
+  --color-family-tom: #a67c5d;
+  --color-family-perc: #7a9170;
+  --color-family-fx: #8a8f96;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.hw-panel {
+  background: linear-gradient(180deg, #171a1f 0%, #121418 100%);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-panel);
+}
+
+.led-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-led-dim);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+.led-dot.on {
+  background: var(--color-led);
+  box-shadow: 0 0 8px rgba(232, 164, 90, 0.75);
+}
+
+.step-cell {
+  position: relative;
+  border-radius: 3px;
+  background: #101216;
+  border: 1px solid #262b32;
+  min-height: 22px;
+}
+.step-cell.beat {
+  background: #14181e;
+  border-color: #30363e;
+}
+.step-cell.bar {
+  border-color: #3a414b;
+}
+.step-cell.on {
+  background: color-mix(in oklab, var(--lane, var(--color-led)) 72%, #1a140e);
+  border-color: color-mix(in oklab, var(--lane, var(--color-led)) 55%, #2a241c);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--lane, var(--color-led)) 28%, transparent);
+}
+.step-cell:hover {
+  border-color: #4a5160;
+}
+.step-cell .vel {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--lane, var(--color-led)) 90%, white);
+  pointer-events: none;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-play);
+  box-shadow: 0 0 10px rgba(215, 196, 160, 0.55);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.meter-bar {
+  width: 5px;
+  border-radius: 2px;
+  background: #1a1d22;
+  overflow: hidden;
+  position: relative;
+}
+.meter-bar > i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, var(--color-led), #8a6a3a);
+}
+
+.knob {
+  touch-action: none;
+  user-select: none;
+}
+.knob-dial {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 30%, #3a4048, #1a1d22 62%);
+  border: 1px solid #3a4048;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.knob-dial::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  background: var(--color-led);
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(232, 164, 90, 0.5);
+}
+
+.fader {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  appearance: none;
+  width: 8px;
+  height: 110px;
+  background: #0e1013;
+  border-radius: 4px;
+  border: 1px solid #2a2e35;
+}
+.fader::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(#3a4048, #232830);
+  border: 1px solid #5a616c;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #3a4048 transparent;
+}
