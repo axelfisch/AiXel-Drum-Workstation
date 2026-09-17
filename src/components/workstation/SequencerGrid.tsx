@@ -26,7 +26,13 @@ function cellVisual(step: Step, mode: StepMode) {
   return step.velocity;
 }
 
-export function SequencerGrid() {
+export function SequencerGrid({
+  focus = false,
+  onToggleFocus,
+}: {
+  focus?: boolean;
+  onToggleFocus?: () => void;
+}) {
   const project = useWorkstation((s) => s.project);
   const selected = useWorkstation((s) => s.selected);
   const stepMode = useWorkstation((s) => s.stepMode);
@@ -73,12 +79,27 @@ export function SequencerGrid() {
   }, [stepFloat, playing, n, visibleStart, visibleCount]);
 
   return (
-    <div className="hw-panel flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <div className="flex items-baseline justify-between px-1">
-        <h2 className="font-display text-lg tracking-[0.12em] uppercase">Sequencer</h2>
-        <p className="engraved">
-          {n} steps · 4/4 · {project.polyMode ? "Poly" : "Mono"}
-        </p>
+    <div className={`hw-panel flex min-h-0 flex-1 flex-col gap-2 p-3 ${focus ? "seq-focus-panel" : ""}`}>
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h2 className="font-display text-lg tracking-[0.12em] uppercase">Sequencer</h2>
+          <p className="engraved truncate">
+            {n} steps · 4/4 · {project.polyMode ? "Poly" : "Mono"}
+            {focus ? " · Focus" : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {onToggleFocus && (
+            <button
+              type="button"
+              className={`hw-btn ${focus ? "on" : ""}`}
+              title={focus ? "Quitter le mode Focus (Esc)" : "Focus Sequencer — voir les 16 pistes"}
+              onClick={onToggleFocus}
+            >
+              {focus ? "Exit Focus" : "Focus"}
+            </button>
+          )}
+        </div>
       </div>
       {mobileHalf && (
         <div className="flex gap-1 md:hidden">
@@ -98,13 +119,16 @@ export function SequencerGrid() {
           </button>
         </div>
       )}
-      <div className="scroll-thin min-h-0 flex-1 overflow-auto">
-        <div className="relative min-w-[640px]">
+      <div className={`scroll-thin min-h-0 flex-1 ${focus ? "overflow-hidden" : "overflow-auto"}`}>
+        <div className={`relative ${focus ? "h-full min-h-0" : "min-w-[640px]"}`}>
           <div
-            className="grid"
+            className={`grid ${focus ? "h-full" : ""}`}
             style={{
-              gridTemplateColumns: `7.5rem repeat(${visibleCount}, minmax(0, 1fr))`,
-              gridTemplateRows: `1.1rem repeat(16, minmax(1.7rem, 1fr))`,
+              gridTemplateColumns: `7.5rem repeat(${visibleCount}, minmax(${focus ? "1.6rem" : "0"}, 1fr))`,
+              gridTemplateRows: focus
+                ? `1.1rem repeat(16, minmax(0, 1fr))`
+                : `1.1rem repeat(16, minmax(1.7rem, 1fr))`,
+              minWidth: focus ? undefined : 640,
             }}
           >
             <div />

@@ -116,57 +116,88 @@ export function Workstation() {
   }, []);
 
   const kit = KIT_BY_ID[project.kitId];
+  const [seqFocus, setSeqFocus] = useState(false);
+
+  useEffect(() => {
+    if (!seqFocus) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSeqFocus(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [seqFocus]);
+
+  useEffect(() => {
+    if (page !== "sequencer" && seqFocus) setSeqFocus(false);
+  }, [page, seqFocus]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
-      <TopBar
-        name={project.name}
-        kitName={kit?.name ?? project.kitId}
-        tempo={project.tempo}
-        swing={project.swing}
-        humanize={project.humanize}
-        playing={playing}
-        onTempo={setTempo}
-        onSwing={setSwing}
-        onHumanize={setHumanize}
-        onPlay={togglePlay}
-        onStop={stop}
-      />
-      <PerformanceBar
-        timeScale={timeScale}
-        songMode={songMode}
-        groove={project.groove}
-        stepCount={project.stepCount}
-        poly={project.polyMode}
-        patternIndex={project.patternIndex}
-        onGroove={setGroove}
-        onSteps={setStepCount}
-        onPoly={setPoly}
-        onPattern={setPattern}
-        onUndo={undo}
-        onRedo={redo}
-      />
-      <nav className="flex shrink-0 items-center gap-1 px-5 py-2">
-        {PAGES.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setPage(p.id)}
-            className={`font-display px-3 py-1.5 text-[11px] tracking-[0.22em] uppercase ${
-              page === p.id ? "border-b border-led text-fg" : "text-subtle"
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </nav>
+    <div className={`flex h-dvh flex-col overflow-hidden bg-bg text-fg ${seqFocus ? "seq-focus-root" : ""}`}>
+      {!seqFocus && (
+        <TopBar
+          name={project.name}
+          kitName={kit?.name ?? project.kitId}
+          tempo={project.tempo}
+          swing={project.swing}
+          humanize={project.humanize}
+          playing={playing}
+          onTempo={setTempo}
+          onSwing={setSwing}
+          onHumanize={setHumanize}
+          onPlay={togglePlay}
+          onStop={stop}
+        />
+      )}
+      {seqFocus && (
+        <FocusTransport
+          tempo={project.tempo}
+          playing={playing}
+          patternIndex={project.patternIndex}
+          onTempo={setTempo}
+          onPlay={togglePlay}
+          onStop={stop}
+          onExit={() => setSeqFocus(false)}
+        />
+      )}
+      {!seqFocus && (
+        <PerformanceBar
+          timeScale={timeScale}
+          songMode={songMode}
+          groove={project.groove}
+          stepCount={project.stepCount}
+          poly={project.polyMode}
+          patternIndex={project.patternIndex}
+          onGroove={setGroove}
+          onSteps={setStepCount}
+          onPoly={setPoly}
+          onPattern={setPattern}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      )}
+      {!seqFocus && (
+        <nav className="flex shrink-0 items-center gap-1 px-5 py-2">
+          {PAGES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPage(p.id)}
+              className={`font-display px-3 py-1.5 text-[11px] tracking-[0.22em] uppercase ${
+                page === p.id ? "border-b border-led text-fg" : "text-subtle"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      )}
       {page === "sequencer" && (
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3 pt-0">
-            <SequencerGrid />
-            <StepEditor mode={stepMode} />
+        <div className={`flex min-h-0 flex-1 ${seqFocus ? "flex-col" : "flex-col lg:flex-row"}`}>
+          <div className={`flex min-h-0 min-w-0 flex-1 flex-col p-3 ${seqFocus ? "pt-2" : "pt-0"}`}>
+            <SequencerGrid focus={seqFocus} onToggleFocus={() => setSeqFocus((v) => !v)} />
+            {!seqFocus && <StepEditor mode={stepMode} />}
           </div>
-          <Inspector />
+          {!seqFocus && <Inspector />}
         </div>
       )}
       {page === "sound" && (
@@ -189,7 +220,48 @@ export function Workstation() {
           <BrowserPage />
         </div>
       )}
-      <PadRow />
+      {!seqFocus && <PadRow />}
+    </div>
+  );
+}
+
+
+function FocusTransport(props: {
+  tempo: number;
+  playing: boolean;
+  patternIndex: number;
+  onTempo: (n: number) => void;
+  onPlay: () => void;
+  onStop: () => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="hw-panel mx-3 mt-3 flex shrink-0 items-center gap-4 px-4 py-2">
+      <p className="font-display text-sm tracking-[0.18em] uppercase text-led">Focus Sequencer</p>
+      <span className="engraved">Pattern {String.fromCharCode(65 + (props.patternIndex % 16))}</span>
+      <div className="ml-auto flex items-center gap-2">
+        <button type="button" className="transport-btn" onClick={props.onPlay} aria-label={props.playing ? "Pause" : "Play"}>
+          {props.playing ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}
+        </button>
+        <button type="button" className="transport-btn" onClick={props.onStop} aria-label="Stop">
+          <Square className="size-3 fill-current" />
+        </button>
+        <label className="flex items-center gap-2 engraved">
+          BPM
+          <input
+            type="number"
+            min={40}
+            max={240}
+            step={0.1}
+            value={props.tempo}
+            onChange={(e) => props.onTempo(Number(e.target.value) || props.tempo)}
+            className="lcd w-16 px-2 py-0.5 font-mono text-[11px] tabular-nums"
+          />
+        </label>
+        <button type="button" className="hw-btn on" onClick={props.onExit} title="Esc">
+          Exit Focus
+        </button>
+      </div>
     </div>
   );
 }

@@ -390,3 +390,12 @@ select.hw-select {
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
+
+
+/* Focus Sequencer — fit all 16 lanes without scrolling the grid */
+.seq-focus-root .seq-focus-panel {
+  min-height: 0;
+}
+.seq-focus-panel .step-cell {
+  min-height: 0;
+}
