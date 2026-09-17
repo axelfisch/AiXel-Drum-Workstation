@@ -144,7 +144,13 @@ function fakeWave(family: DrumFamily, reverse: boolean) {
   return d;
 }
 
-export function MixerPage() {
+export function MixerPage({
+  focus = false,
+  onToggleFocus,
+}: {
+  focus?: boolean;
+  onToggleFocus?: () => void;
+}) {
   const project = useWorkstation((s) => s.project);
   const selected = useWorkstation((s) => s.selected);
   const select = useWorkstation((s) => s.select);
@@ -154,21 +160,40 @@ export function MixerPage() {
   const m = project.mixer;
 
   return (
-    <div className="scroll-thin flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
-      <div className="flex min-w-max gap-1">
+    <div className={`flex min-h-0 flex-1 flex-col gap-3 p-3 ${focus ? "overflow-hidden" : "scroll-thin overflow-auto"}`}>
+      <div className="flex shrink-0 items-center justify-between gap-3 px-1">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h2 className="font-display text-lg tracking-[0.12em] uppercase">Mixer</h2>
+          <p className="engraved truncate">
+            {project.channels.length} channels
+            {focus ? " · Focus" : ""}
+          </p>
+        </div>
+        {onToggleFocus && (
+          <button
+            type="button"
+            className={`hw-btn ${focus ? "on" : ""}`}
+            title={focus ? "Quitter le mode Focus (Esc)" : "Focus Mixer — voir toutes les voies"}
+            onClick={onToggleFocus}
+          >
+            {focus ? "Exit Focus" : "Focus"}
+          </button>
+        )}
+      </div>
+      <div className={`flex gap-1 ${focus ? "min-h-0 flex-1 overflow-x-auto overflow-y-hidden" : "min-w-max"}`}>
         {project.channels.map((ch, i) => (
           <div
             key={ch.id}
-            className={`hw-panel flex w-[72px] flex-col items-center gap-2 rounded-lg p-2 ${selected === i ? "border-led/40" : ""}`}
+            className={`hw-panel flex flex-col items-center gap-2 rounded-lg p-2 ${focus ? "h-full w-[88px] shrink-0" : "w-[72px]"} ${selected === i ? "border-led/40" : ""}`}
           >
             <button type="button" className="font-display w-full truncate text-[10px] tracking-widest text-muted uppercase" onClick={() => select(i)}>
               {ch.name.replace("Closed Hat", "CHH").replace("Open Hat", "OHH").replace("Rim / Stick", "Rim").replace("FX / User", "FX")}
             </button>
-            <div className="meter-bar h-16">
+            <div className={`meter-bar ${focus ? "min-h-0 flex-1 w-3" : "h-16"}`}>
               <i style={{ height: `${Math.min(100, (meter[i] ?? 0) * 100)}%` }} />
             </div>
             <input
-              className="fader"
+              className={`fader ${focus ? "fader-tall" : ""}`}
               type="range"
               min={0}
               max={1}
@@ -193,11 +218,16 @@ export function MixerPage() {
                 S
               </button>
             </div>
-            <Knob label="Verb" size="sm" value={ch.reverbSend} onChange={(v) => updateChannel(i, { reverbSend: v })} />
-            <Knob label="Dly" size="sm" value={ch.delaySend} onChange={(v) => updateChannel(i, { delaySend: v })} />
+            {!focus && (
+              <>
+                <Knob label="Verb" size="sm" value={ch.reverbSend} onChange={(v) => updateChannel(i, { reverbSend: v })} />
+                <Knob label="Dly" size="sm" value={ch.delaySend} onChange={(v) => updateChannel(i, { delaySend: v })} />
+              </>
+            )}
           </div>
         ))}
       </div>
+      {!focus && (
       <div className="grid gap-3 md:grid-cols-3">
         <section className="hw-panel hw-panel--screws rounded-xl p-4">
           <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Reverb Bus</h3>
@@ -241,6 +271,7 @@ export function MixerPage() {
           </div>
         </section>
       </div>
+      )}
     </div>
   );
 }

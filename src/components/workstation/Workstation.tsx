@@ -116,24 +116,26 @@ export function Workstation() {
   }, []);
 
   const kit = KIT_BY_ID[project.kitId];
-  const [seqFocus, setSeqFocus] = useState(false);
+  const [focusMode, setFocusMode] = useState<null | "sequencer" | "mixer">(null);
+  const focused = focusMode != null;
 
   useEffect(() => {
-    if (!seqFocus) return;
+    if (!focused) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSeqFocus(false);
+      if (e.key === "Escape") setFocusMode(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [seqFocus]);
+  }, [focused]);
 
   useEffect(() => {
-    if (page !== "sequencer" && seqFocus) setSeqFocus(false);
-  }, [page, seqFocus]);
+    if (focusMode === "sequencer" && page !== "sequencer") setFocusMode(null);
+    if (focusMode === "mixer" && page !== "mixer") setFocusMode(null);
+  }, [page, focusMode]);
 
   return (
-    <div className={`flex h-dvh flex-col overflow-hidden bg-bg text-fg ${seqFocus ? "seq-focus-root" : ""}`}>
-      {!seqFocus && (
+    <div className={`flex h-dvh flex-col overflow-hidden bg-bg text-fg ${focused ? "seq-focus-root" : ""}`}>
+      {!focused && (
         <TopBar
           name={project.name}
           kitName={kit?.name ?? project.kitId}
@@ -148,7 +150,7 @@ export function Workstation() {
           onStop={stop}
         />
       )}
-      {seqFocus && (
+      {focused && (
         <FocusTransport
           tempo={project.tempo}
           playing={playing}
@@ -156,10 +158,11 @@ export function Workstation() {
           onTempo={setTempo}
           onPlay={togglePlay}
           onStop={stop}
-          onExit={() => setSeqFocus(false)}
+          onExit={() => setFocusMode(null)}
+          label={focusMode === "mixer" ? "Focus Mixer" : "Focus Sequencer"}
         />
       )}
-      {!seqFocus && (
+      {!focused && (
         <PerformanceBar
           timeScale={timeScale}
           songMode={songMode}
@@ -175,7 +178,7 @@ export function Workstation() {
           onRedo={redo}
         />
       )}
-      {!seqFocus && (
+      {!focused && (
         <nav className="flex shrink-0 items-center gap-1 px-5 py-2">
           {PAGES.map((p) => (
             <button
@@ -192,12 +195,12 @@ export function Workstation() {
         </nav>
       )}
       {page === "sequencer" && (
-        <div className={`flex min-h-0 flex-1 ${seqFocus ? "flex-col" : "flex-col lg:flex-row"}`}>
-          <div className={`flex min-h-0 min-w-0 flex-1 flex-col p-3 ${seqFocus ? "pt-2" : "pt-0"}`}>
-            <SequencerGrid focus={seqFocus} onToggleFocus={() => setSeqFocus((v) => !v)} />
-            {!seqFocus && <StepEditor mode={stepMode} />}
+        <div className={`flex min-h-0 flex-1 ${focused ? "flex-col" : "flex-col lg:flex-row"}`}>
+          <div className={`flex min-h-0 min-w-0 flex-1 flex-col p-3 ${focused ? "pt-2" : "pt-0"}`}>
+            <SequencerGrid focus={focusMode === "sequencer"} onToggleFocus={() => setFocusMode((m) => (m === "sequencer" ? null : "sequencer"))} />
+            {!focused && <StepEditor mode={stepMode} />}
           </div>
-          {!seqFocus && <Inspector />}
+          {!focused && <Inspector />}
         </div>
       )}
       {page === "sound" && (
@@ -207,7 +210,10 @@ export function Workstation() {
       )}
       {page === "mixer" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <MixerPage />
+          <MixerPage
+            focus={focusMode === "mixer"}
+            onToggleFocus={() => setFocusMode((m) => (m === "mixer" ? null : "mixer"))}
+          />
         </div>
       )}
       {page === "song" && (
@@ -220,7 +226,7 @@ export function Workstation() {
           <BrowserPage />
         </div>
       )}
-      {!seqFocus && <PadRow />}
+      {!focused && <PadRow />}
     </div>
   );
 }
@@ -234,10 +240,11 @@ function FocusTransport(props: {
   onPlay: () => void;
   onStop: () => void;
   onExit: () => void;
+  label?: string;
 }) {
   return (
     <div className="hw-panel mx-3 mt-3 flex shrink-0 items-center gap-4 px-4 py-2">
-      <p className="font-display text-sm tracking-[0.18em] uppercase text-led">Focus Sequencer</p>
+      <p className="font-display text-sm tracking-[0.18em] uppercase text-led">{props.label ?? "Focus"}</p>
       <span className="engraved">Pattern {String.fromCharCode(65 + (props.patternIndex % 16))}</span>
       <div className="ml-auto flex items-center gap-2">
         <button type="button" className="transport-btn" onClick={props.onPlay} aria-label={props.playing ? "Pause" : "Play"}>

@@ -399,3 +399,9 @@ select.hw-select {
 .seq-focus-panel .step-cell {
   min-height: 0;
 }
+
+.fader-tall {
+  height: 140px;
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
