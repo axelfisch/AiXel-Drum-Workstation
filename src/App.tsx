@@ -35,7 +35,16 @@ function Splash({ onArm, pending }: { onArm: () => void; pending?: boolean }) {
       <h1 className="font-display mt-2 text-center text-4xl font-semibold tracking-[0.08em] text-balance md:text-6xl">
         Drum Workstation
       </h1>
-      <p className="mt-4 max-w-md text-center text-sm leading-relaxed text-muted text-pretty">
+      <div className="mt-8 w-full max-w-xl overflow-hidden rounded-2xl border border-border shadow-[0_24px_64px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.04)]">
+        <img
+          src="/og.jpg"
+          alt="AiXel Drum Workstation"
+          className="block h-auto w-full object-cover"
+          width={1200}
+          height={630}
+        />
+      </div>
+      <p className="mt-6 max-w-md text-center text-sm leading-relaxed text-muted text-pretty">
         Sixteen voices. Thirty-two steps. Groove, mixer, fills and song mode — a studio drum instrument in the browser.
       </p>
       <button
