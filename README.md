@@ -2,7 +2,7 @@
 
 Professional drum instrument — sequencer, kits, mixer, groove, song mode.
 
-**Web edition** (playable) · **Native VST3 / Audio Unit** (port planned — see [`native/README.md`](native/README.md))
+**Web edition** (playable) · **Native VST3 Phase 1** (JUCE 8, macOS arm64 — see [`native/README.md`](native/README.md), validation [`native/VALIDATION.md`](native/VALIDATION.md))
 
 Owner: [axelfisch](https://github.com/axelfisch)  
 Tagline: *fast enough for a beat in 20 seconds, deep enough for a finished drum production.*
@@ -63,3 +63,15 @@ Details and native roadmap: [`native/README.md`](native/README.md).
 ## Licence
 
 Private. © 2026 Axel Fisch / AiXel Studio. All rights reserved.
+
+
+## Native VST3 (Phase 1)
+
+Scaffold JUCE 8 livré sous `native/` (sources + scripts). Build / install :
+
+```sh
+./native/scripts/build-mac.sh
+./native/scripts/install-vst3-mac.sh
+```
+
+Voir `native/VALIDATION.md` (scan Cubase OK ; chargement piste à confirmer). Signature ad hoc locale ; notarisation non faite. Le web n’est pas remplacé par le VST.

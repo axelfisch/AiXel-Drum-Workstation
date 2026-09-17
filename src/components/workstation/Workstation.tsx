@@ -359,10 +359,19 @@ function TopBar(props: {
     <header className="hw-panel hw-panel--screws mx-3 mt-3 shrink-0 px-5 pt-4 pb-3">
       <div className="mb-3 flex items-end justify-between gap-4">
         <div className="flex items-end gap-6">
-          <div>
-            <p className="font-display text-2xl leading-none tracking-[0.02em] text-fg">AiXel</p>
-            <p className="engraved mt-1">Drum Workstation</p>
-          </div>
+          <a href="/" className="flex shrink-0 items-center gap-2.5 no-underline" title="AiXel Drum Workstation">
+            <img
+              src="/logo-mark.png"
+              alt="AiXel"
+              className="h-10 w-10 rounded-md object-cover shadow-[0_0_12px_rgba(240,169,74,0.35)]"
+              width={40}
+              height={40}
+            />
+            <div className="hidden min-[380px]:block">
+              <p className="font-display text-xl leading-none tracking-[0.02em] text-fg">AiXel</p>
+              <p className="engraved mt-1">Drum Workstation</p>
+            </div>
+          </a>
           <div className="hidden pb-0.5 sm:block">
             <p className="engraved">Project</p>
             {editing ? (

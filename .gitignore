@@ -14,3 +14,10 @@ artifacts/
 
 # Local Netlify folder
 .netlify
+
+# Local Phase1 binary package (large)
+releases/
+.tmp-phase1/
+.tmp-phase1.zip
+native/build-mac/
+native/build-xcode/
