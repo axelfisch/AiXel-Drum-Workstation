@@ -11,3 +11,6 @@ dist/
 screenshots/
 artifacts/
 *.log
+
+# Local Netlify folder
+.netlify
