@@ -238,25 +238,27 @@ export function MixerPage({
 
   return (
     <div className={`flex min-h-0 flex-1 flex-col gap-3 p-3 scroll-thin overflow-auto ${focus ? "mixer-focus-same" : ""}`}>
-      <div className="flex shrink-0 items-center justify-between gap-3 px-1">
-        <div className="flex items-baseline gap-3 min-w-0">
-          <h2 className="font-display text-lg tracking-[0.12em] uppercase">Mixer</h2>
-          <p className="engraved truncate">{project.channels.length} channels · Rev / Dly / Master</p>
+      {!focus && (
+        <div className="flex shrink-0 items-center justify-between gap-3 px-1">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <h2 className="font-display text-lg tracking-[0.12em] uppercase">Mixer</h2>
+            <p className="engraved truncate">{project.channels.length} channels · Rev / Dly / Master</p>
+          </div>
+          {onToggleFocus && (
+            <button type="button" className="hw-btn" title="Focus Mixer" onClick={onToggleFocus}>
+              Focus
+            </button>
+          )}
         </div>
-        {onToggleFocus && !focus && (
-          <button type="button" className="hw-btn" title="Focus Mixer" onClick={onToggleFocus}>
-            Focus
-          </button>
-        )}
-      </div>
+      )}
 
-      <div className="flex min-w-max gap-1.5">
+      <div className={`flex gap-1.5 ${focus ? "w-full min-w-0" : "min-w-max"}`}>
         {project.channels.map((ch, i) => (
           <div
             key={ch.id}
-            className={`hw-panel flex w-[76px] shrink-0 flex-col items-center gap-1.5 rounded-lg p-2 ${
-              selected === i ? "border-led/40" : ""
-            }`}
+            className={`hw-panel flex flex-col items-center gap-1.5 rounded-lg p-2 ${
+              focus ? "min-w-0 flex-1" : "w-[76px] shrink-0"
+            } ${selected === i ? "border-led/40" : ""}`}
           >
             <button
               type="button"
@@ -299,7 +301,7 @@ export function MixerPage({
           </div>
         ))}
 
-        <div className="hw-panel strip-rev flex w-[78px] shrink-0 flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-hat)_45%,transparent)] p-2">
+        <div className={`hw-panel strip-rev flex flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-hat)_45%,transparent)] p-2 ${focus ? "min-w-0 w-[4.75rem] shrink-0" : "w-[78px] shrink-0"}`}>
           <p className="font-display text-[10px] tracking-widest text-family-hat uppercase">Rev</p>
           <div className="meter-bar meter-rev h-14">
             <i style={{ height: `${Math.min(100, m.reverb.return * 70)}%` }} />
@@ -320,7 +322,7 @@ export function MixerPage({
           </div>
         </div>
 
-        <div className="hw-panel strip-dly flex w-[78px] shrink-0 flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-perc)_45%,transparent)] p-2">
+        <div className={`hw-panel strip-dly flex flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-perc)_45%,transparent)] p-2 ${focus ? "min-w-0 w-[4.75rem] shrink-0" : "w-[78px] shrink-0"}`}>
           <p className="font-display text-[10px] tracking-widest text-family-perc uppercase">Dly</p>
           <div className="meter-bar meter-dly h-14">
             <i style={{ height: `${Math.min(100, m.delay.return * 70)}%` }} />
@@ -341,7 +343,7 @@ export function MixerPage({
           </div>
         </div>
 
-        <div className="hw-panel strip-master flex w-[86px] shrink-0 flex-col items-center gap-1.5 rounded-lg border border-led/50 p-2">
+        <div className={`hw-panel strip-master flex flex-col items-center gap-1.5 rounded-lg border border-led/50 p-2 ${focus ? "min-w-0 w-[5.25rem] shrink-0" : "w-[86px] shrink-0"}`}>
           <p className="font-display text-[10px] tracking-widest text-led uppercase">Master</p>
           <div className="flex w-full justify-center gap-1">
             {msBtn(!!m.master.mute, "mute", () => updateMixer({ master: { ...m.master, mute: !m.master.mute } }), "M")}

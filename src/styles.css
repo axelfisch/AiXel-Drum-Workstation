@@ -393,7 +393,28 @@ select.hw-select {
 
 
 /* Focus Sequencer — fit all 16 lanes without scrolling the grid */
-.seq-focus-panel { min-height: 0; height: 100%; }
+.seq-focus-panel {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.seq-focus-panel .scroll-thin {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+.seq-focus-panel .scroll-thin > .relative {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+.seq-focus-panel .scroll-thin > .relative > .grid {
+  height: 100%;
+  min-height: 100%;
+}
 .seq-focus-panel .step-cell {
   min-height: 0;
 }
@@ -485,16 +506,13 @@ select.hw-select {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5vh 2vw;
+  padding: 2.5vh 0.6vw;
   background: color-mix(in oklab, #050607 55%, transparent);
   backdrop-filter: blur(2px);
 }
 .focus-window {
   display: flex;
   flex-direction: column;
-  width: min(1180px, 96vw);
-  height: min(78dvh, 860px);
-  max-height: 82dvh;
   overflow: hidden;
   border-radius: 14px;
   border: 1px solid color-mix(in oklab, var(--color-led) 28%, transparent);
@@ -522,10 +540,13 @@ select.hw-select {
 .focus-window--seq {
   width: min(1280px, 97vw);
   height: min(82dvh, 900px);
+  max-height: 82dvh;
 }
 .focus-window--mixer {
-  width: min(1180px, 96vw);
+  /* Wider so all channel strips fit — height unchanged */
+  width: min(1680px, 99vw);
   height: min(78dvh, 860px);
+  max-height: 78dvh;
 }
 .focus-window__body {
   display: flex;

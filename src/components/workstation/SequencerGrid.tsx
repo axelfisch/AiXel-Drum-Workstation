@@ -79,28 +79,29 @@ export function SequencerGrid({
   }, [stepFloat, playing, n, visibleStart, visibleCount]);
 
   return (
-    <div className={`hw-panel flex min-h-0 flex-1 flex-col gap-2 p-3 ${focus ? "seq-focus-panel" : ""}`}>
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="flex items-baseline gap-3 min-w-0">
-          <h2 className="font-display text-lg tracking-[0.12em] uppercase">Sequencer</h2>
-          <p className="engraved truncate">
-            {n} steps · 4/4 · {project.polyMode ? "Poly" : "Mono"}
-            {focus ? " · Focus" : ""}
-          </p>
+    <div className={`hw-panel flex min-h-0 flex-1 flex-col ${focus ? "seq-focus-panel gap-1 p-1.5" : "gap-2 p-3"}`}>
+      {!focus && (
+        <div className="flex items-center justify-between gap-3 px-1">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <h2 className="font-display text-lg tracking-[0.12em] uppercase">Sequencer</h2>
+            <p className="engraved truncate">
+              {n} steps · 4/4 · {project.polyMode ? "Poly" : "Mono"}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {onToggleFocus && (
+              <button
+                type="button"
+                className="hw-btn"
+                title="Focus Sequencer — voir les 16 pistes"
+                onClick={onToggleFocus}
+              >
+                Focus
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {onToggleFocus && !focus && (
-            <button
-              type="button"
-              className="hw-btn"
-              title="Focus Sequencer — voir les 16 pistes"
-              onClick={onToggleFocus}
-            >
-              Focus
-            </button>
-          )}
-        </div>
-      </div>
+      )}
       {mobileHalf && (
         <div className="flex gap-1 md:hidden">
           <button
@@ -126,7 +127,7 @@ export function SequencerGrid({
             style={{
               gridTemplateColumns: `7.5rem repeat(${visibleCount}, minmax(${focus ? "1.6rem" : "0"}, 1fr))`,
               gridTemplateRows: focus
-                ? `1.1rem repeat(16, minmax(0, 1fr))`
+                ? `1rem repeat(16, minmax(0, 1fr))`
                 : `1.1rem repeat(16, minmax(1.7rem, 1fr))`,
               minWidth: focus ? undefined : 640,
             }}
