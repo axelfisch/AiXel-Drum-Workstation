@@ -41,6 +41,7 @@ interface WS {
   meter: number[];
   masterPeak: number;
   midiLearn: boolean;
+  recording: boolean;
 }
 
 interface Actions {
@@ -56,6 +57,7 @@ interface Actions {
   setPoly: (on: boolean) => void;
   toggleStep: (ch: number, step: number) => void;
   paintStep: (ch: number, step: number, on: boolean) => void;
+  persistPaint: () => void;
   setStepParam: (ch: number, step: number, patch: Partial<Step>) => void;
   updateChannel: (i: number, patch: Partial<DrumChannel>) => void;
   loadKit: (kitId: string, keepPattern?: boolean) => void;
@@ -72,7 +74,9 @@ interface Actions {
   lock: (i: number, key: "lockPattern" | "lockSound" | "lockMixer") => void;
   setPlayingUI: (p: boolean, step: number, stepFloat: number) => void;
   togglePlay: () => void;
+  pause: () => void;
   stop: () => void;
+  setRecording: (on: boolean) => void;
   setSongMode: (on: boolean) => void;
   setTimeScale: (n: number) => void;
   setRandomAmount: (n: number) => void;
@@ -109,7 +113,7 @@ function bootProject(): Project {
   const pat = FACTORY_PATTERNS[0]!;
   project.patterns[0] = clonePattern(pat);
   project.patterns[0]!.name = "A";
-  project.name = "Boom Bap Sketch";
+  project.name = "Untitled Groove";
   return project;
 }
 
@@ -154,7 +158,7 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     project: bootProject(),
     page: "sequencer",
     selected: 0,
-    stepMode: "trigger",
+    stepMode: "velocity",
     armed: false,
     playing: false,
     currentStep: 0,
@@ -162,7 +166,7 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     songMode: false,
     timeScale: 1,
     randomAmount: 0.35,
-    mutateAmount: 0.15,
+    mutateAmount: 0.5,
     fillAmount: 0.65,
     fillComplexity: 0.55,
     fillLength: 8,
@@ -177,6 +181,7 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     meter: Array(16).fill(0),
     masterPeak: 0,
     midiLearn: false,
+    recording: false,
 
     initFromStorage: () => {
       try {
@@ -243,6 +248,9 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
       if (on && s.velocity < 0.05) s.velocity = 0.85;
       set({ project });
     },
+    persistPaint: () => {
+      get().persist();
+    },
     setStepParam: (ch, step, patch) => {
       const project = snapshot(get().project);
       Object.assign(project.patterns[project.patternIndex]!.steps[ch]![step]!, patch);
@@ -273,10 +281,19 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
       const id = nextSoundId(ch.soundId, dir, ch.family);
       get().updateChannel(selected, { soundId: id, userSample: false });
       const def = SOUND_BY_ID[id];
-      if (def) void audioEngine.init().then(() => audioEngine.trigger(selected, { ...ch, soundId: id, userSample: false }, { velocity: 0.9, pitch: 0, pan: 0, when: audioEngine.ctx?.currentTime ?? 0 }));
+      if (def)
+        void audioEngine.init().then(() =>
+          audioEngine.trigger(selected, { ...ch, soundId: id, userSample: false }, {
+            velocity: 0.9,
+            pitch: 0,
+            pan: 0,
+            when: audioEngine.ctx?.currentTime ?? 0,
+          }),
+        );
     },
     triggerPad: (i, vel = 0.9) => {
-      const ch = get().project.channels[i]!;
+      const state = get();
+      const ch = state.project.channels[i]!;
       void audioEngine.init().then(() => {
         audioEngine.trigger(i, ch, {
           velocity: vel,
@@ -285,6 +302,17 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
           when: audioEngine.ctx!.currentTime,
         });
       });
+      if (state.recording) {
+        const project = snapshot(state.project);
+        const step = Math.min(project.stepCount - 1, Math.max(0, Math.floor(state.stepFloat) % project.stepCount));
+        const s = project.patterns[project.patternIndex]!.steps[i]![step]!;
+        s.on = true;
+        s.velocity = vel;
+        set({ project, selected: i });
+        get().persist();
+      } else {
+        set({ selected: i });
+      }
     },
     setPattern: (patternIndex) => {
       set({ project: { ...get().project, patternIndex } });
@@ -330,13 +358,13 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
       const { project, randomAmount, genre, selected } = get();
       const locked = project.channels.map((c) => c.lockPattern);
       const amt = randomAmount;
-      let next = snapshot(project);
+      const next = snapshot(project);
       const cur = next.patterns[next.patternIndex]!;
       if (scope === "pattern") {
         next.patterns[next.patternIndex] = mixPatterns(cur, generateGenrePattern(genre, next.stepCount), amt, locked);
       } else if (scope === "track") {
         const g = generateGenrePattern(genre, next.stepCount);
-        const lock = locked.map((v, i) => (i === selected ? false : true) || v);
+        const lock = locked.map((v, i) => i !== selected || v);
         next.patterns[next.patternIndex] = mixPatterns(cur, g, amt, lock);
       } else if (scope === "velocity") {
         next.patterns[next.patternIndex] = randomizeVelocity(cur, amt, locked);
@@ -367,8 +395,8 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     },
     fillNow: () => {
       const { project, fillAmount, fillComplexity, fillLength } = get();
-      const steps = makeFill(project.patterns[project.patternIndex]!, fillLength, fillComplexity, fillAmount);
-      sequencer.armFill(steps);
+      const steps = makeFill(project.patterns[project.patternIndex]!, fillLength, fillComplexity, fillAmount, project.stepCount);
+      sequencer.armFill(steps, fillLength);
     },
     lock: (i, key) => {
       const project = snapshot(get().project);
@@ -378,7 +406,9 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     },
     setPlayingUI: (playing, currentStep, stepFloat) => set({ playing, currentStep, stepFloat }),
     togglePlay: () => sequencer.toggle(),
+    pause: () => sequencer.pause(),
     stop: () => sequencer.stop(),
+    setRecording: (recording) => set({ recording }),
     setSongMode: (songMode) => {
       sequencer.songMode = songMode;
       set({ songMode });

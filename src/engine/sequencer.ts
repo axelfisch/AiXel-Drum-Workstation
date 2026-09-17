@@ -18,6 +18,7 @@ const GROOVE_SWING: Record<string, number> = {
   broken: 40,
   brazilian: 46,
   human: 28,
+  "neo-soul": 62,
 };
 
 export class SequencerEngine {
@@ -29,10 +30,10 @@ export class SequencerEngine {
   songRepeatLeft = 0;
   fillArmed = false;
   fillSteps: Step[][] | null = null;
+  fillLen = 8;
   timeScale = 1;
   private timer: number | null = null;
   private nextNoteTime = 0;
-  private startTime = 0;
   private listeners = new Set<TransportListener>();
   private getProject: () => Project;
   private onPatternPlay: (index: number) => void;
@@ -68,12 +69,20 @@ export class SequencerEngine {
     const ctx = audioEngine.ctx!;
     this.playing = true;
     this.nextNoteTime = ctx.currentTime + 0.05;
-    this.startTime = this.nextNoteTime;
     if (this.songMode) {
       const clip = this.getProject().song[this.songClip];
-      this.songRepeatLeft = clip?.repeats ?? 1;
+      if (this.songRepeatLeft <= 0) this.songRepeatLeft = clip?.repeats ?? 1;
     }
     this.timer = window.setInterval(() => this.schedule(), this.lookahead);
+    this.emit();
+  }
+
+  pause() {
+    this.playing = false;
+    if (this.timer != null) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
     this.emit();
   }
 
@@ -85,19 +94,23 @@ export class SequencerEngine {
     }
     this.step = 0;
     this.stepFloat = 0;
+    this.songClip = 0;
+    this.songRepeatLeft = 0;
+    this.fillArmed = false;
+    this.fillSteps = null;
     this.emit();
   }
 
   toggle() {
-    if (this.playing) this.stop();
+    if (this.playing) this.pause();
     else void this.play();
   }
 
   private secondsPerStep(project: Project) {
-    const tempo = project.tempo;
+    const tempo = Math.max(40, project.tempo || 120);
     const beat = 60 / tempo;
     const stepsPerBar = project.stepCount === 24 ? 24 : 16;
-    return (beat * 4) / stepsPerBar / this.timeScale;
+    return (beat * 4) / stepsPerBar / Math.max(0.25, this.timeScale);
   }
 
   private swingFor(project: Project, step: number, dur: number) {
@@ -126,7 +139,8 @@ export class SequencerEngine {
   private scheduleStep(project: Project, step: number, when: number) {
     const pattern = project.patterns[project.patternIndex]!;
     const len = project.stepCount;
-    const useFill = this.fillArmed && this.fillSteps && step >= len - this.fillLength(project);
+    const fillStart = Math.max(0, len - this.fillLength(project));
+    const useFill = this.fillArmed && this.fillSteps && step >= fillStart;
     for (let c = 0; c < project.channels.length; c++) {
       const ch = project.channels[c]!;
       const laneLen = project.polyMode ? Math.max(1, ch.laneLength) : len;
@@ -139,7 +153,7 @@ export class SequencerEngine {
   }
 
   private fillLength(project: Project) {
-    return Math.min(project.stepCount, 8);
+    return Math.min(project.stepCount, Math.max(1, this.fillLen));
   }
 
   private advance(project: Project) {
@@ -151,10 +165,10 @@ export class SequencerEngine {
         this.fillArmed = false;
         this.fillSteps = null;
       }
-      if (this.songMode) {
+      if (this.songMode && project.song.length > 0) {
         this.songRepeatLeft -= 1;
         if (this.songRepeatLeft <= 0) {
-          this.songClip = (this.songClip + 1) % Math.max(1, project.song.length);
+          this.songClip = (this.songClip + 1) % project.song.length;
           const clip = project.song[this.songClip];
           this.songRepeatLeft = clip?.repeats ?? 1;
           if (clip) this.onPatternPlay(clip.patternIndex);
@@ -163,9 +177,10 @@ export class SequencerEngine {
     }
   }
 
-  armFill(steps: Step[][]) {
+  armFill(steps: Step[][], length = 8) {
     this.fillArmed = true;
     this.fillSteps = steps;
+    this.fillLen = length;
   }
 }
 
@@ -174,7 +189,7 @@ function clamp01(n: number) {
 }
 
 export function stepDuration(project: Project, timeScale = 1) {
-  const beat = 60 / project.tempo;
+  const beat = 60 / Math.max(40, project.tempo || 120);
   const stepsPerBar = project.stepCount === 24 ? 24 : 16;
-  return (beat * 4) / stepsPerBar / timeScale;
+  return (beat * 4) / stepsPerBar / Math.max(0.25, timeScale);
 }

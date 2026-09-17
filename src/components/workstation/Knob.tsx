@@ -10,7 +10,7 @@ type Props = {
   defaultValue?: number;
   format?: (n: number) => string;
   onChange: (v: number) => void;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
 };
 
 export function Knob({
@@ -37,10 +37,10 @@ export function Knob({
   return (
     <div className="knob flex flex-col items-center gap-1">
       <div
-        className={cn("knob-dial", size === "sm" && "h-7 w-7")}
+        className={cn("knob-dial", size === "sm" && "knob-dial--sm", size === "lg" && "knob-dial--lg")}
         style={{ transform: `rotate(${rot}deg)` }}
         role="slider"
-        aria-label={label}
+        aria-label={label || "control"}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
@@ -69,8 +69,10 @@ export function Knob({
           if (e.key === "ArrowDown" || e.key === "ArrowLeft") onChange(Math.max(min, value - step));
         }}
       />
-      <span className="font-display text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</span>
-      <span className="font-mono text-[10px] tabular-nums text-subtle">{display}</span>
+      {label ? (
+        <span className="font-display text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{label}</span>
+      ) : null}
+      {display ? <span className="font-mono text-[10px] tabular-nums text-subtle">{display}</span> : null}
     </div>
   );
 }

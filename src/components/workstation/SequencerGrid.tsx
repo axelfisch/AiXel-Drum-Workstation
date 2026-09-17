@@ -22,6 +22,7 @@ function cellVisual(step: Step, mode: StepMode) {
   if (mode === "ratchet") return step.ratchet / 8;
   if (mode === "filter") return step.filter;
   if (mode === "reverb") return step.reverb;
+  if (mode === "length") return step.length;
   return step.velocity;
 }
 
@@ -34,6 +35,7 @@ export function SequencerGrid() {
   const select = useWorkstation((s) => s.select);
   const toggleStep = useWorkstation((s) => s.toggleStep);
   const paintStep = useWorkstation((s) => s.paintStep);
+  const persistPaint = useWorkstation((s) => s.persistPaint);
   const setStepParam = useWorkstation((s) => s.setStepParam);
   const triggerPad = useWorkstation((s) => s.triggerPad);
   const lock = useWorkstation((s) => s.lock);
@@ -43,40 +45,53 @@ export function SequencerGrid() {
   const paint = useRef<{ on: boolean; ch: number } | null>(null);
   const playhead = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<"a" | "b">("a");
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const fn = () => setNarrow(mq.matches);
+    fn();
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
 
   const mobileHalf = n > 16;
-  const visibleStart = page === "b" && mobileHalf ? Math.floor(n / 2) : 0;
-  const visibleCount = mobileHalf ? Math.ceil(n / 2) : n;
+  const split = narrow && mobileHalf;
+  const visibleStart = split && page === "b" ? Math.floor(n / 2) : 0;
+  const visibleCount = split ? Math.ceil(n / 2) : n;
+  const indices = Array.from({ length: visibleCount }, (_, i) => visibleStart + i);
 
   useEffect(() => {
     const el = playhead.current;
     if (!el) return;
-    const colW = 100 / n;
-    const x = (stepFloat % n) * colW;
-    el.style.left = `calc(${x}% )`;
-    el.style.opacity = playing ? "1" : "0";
-  }, [stepFloat, playing, n]);
+    const local = ((stepFloat % n) + n) % n;
+    const inView = local >= visibleStart && local < visibleStart + visibleCount;
+    const colW = 100 / visibleCount;
+    const x = (local - visibleStart) * colW;
+    el.style.left = `calc(${x}%)`;
+    el.style.opacity = playing && inView ? "1" : "0";
+  }, [stepFloat, playing, n, visibleStart, visibleCount]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="hw-panel flex min-h-0 flex-1 flex-col gap-2 p-3">
+      <div className="flex items-baseline justify-between px-1">
+        <h2 className="font-display text-lg tracking-[0.12em] uppercase">Sequencer</h2>
+        <p className="engraved">
+          {n} steps · 4/4 · {project.polyMode ? "Poly" : "Mono"}
+        </p>
+      </div>
       {mobileHalf && (
         <div className="flex gap-1 md:hidden">
           <button
             type="button"
-            className={cn(
-              "rounded-md px-3 py-1 font-display text-xs tracking-widest uppercase",
-              page === "a" ? "bg-surface-3 text-fg" : "text-muted",
-            )}
+            className={cn("hw-btn", page === "a" && "on")}
             onClick={() => setPage("a")}
           >
             1–{Math.ceil(n / 2)}
           </button>
           <button
             type="button"
-            className={cn(
-              "rounded-md px-3 py-1 font-display text-xs tracking-widest uppercase",
-              page === "b" ? "bg-surface-3 text-fg" : "text-muted",
-            )}
+            className={cn("hw-btn", page === "b" && "on")}
             onClick={() => setPage("b")}
           >
             {Math.ceil(n / 2) + 1}–{n}
@@ -84,16 +99,16 @@ export function SequencerGrid() {
         </div>
       )}
       <div className="scroll-thin min-h-0 flex-1 overflow-auto">
-        <div className="relative min-w-[720px]">
+        <div className="relative min-w-[640px]">
           <div
             className="grid"
             style={{
-              gridTemplateColumns: `7.5rem repeat(${n}, minmax(0, 1fr))`,
+              gridTemplateColumns: `7.5rem repeat(${visibleCount}, minmax(0, 1fr))`,
               gridTemplateRows: `1.1rem repeat(16, minmax(1.7rem, 1fr))`,
             }}
           >
             <div />
-            {Array.from({ length: n }, (_, i) => (
+            {indices.map((i) => (
               <div
                 key={i}
                 className={cn(
@@ -114,7 +129,7 @@ export function SequencerGrid() {
                 mute={ch.mute}
                 solo={ch.solo}
                 locked={ch.lockPattern}
-                n={n}
+                indices={indices}
                 steps={pattern.steps[ci]!}
                 mode={stepMode}
                 poly={project.polyMode}
@@ -127,6 +142,7 @@ export function SequencerGrid() {
                 onToggle={(si) => toggleStep(ci, si)}
                 onPaint={(si, on) => paintStep(ci, si, on)}
                 onParam={(si, patch) => setStepParam(ci, si, patch)}
+                onPaintEnd={persistPaint}
                 paintRef={paint}
               />
             ))}
@@ -139,9 +155,6 @@ export function SequencerGrid() {
           </div>
         </div>
       </div>
-      <span className="sr-only">
-        Showing steps {visibleStart + 1} to {visibleStart + visibleCount}
-      </span>
     </div>
   );
 }
@@ -154,7 +167,7 @@ function Lane({
   mute,
   solo,
   locked,
-  n,
+  indices,
   steps,
   mode,
   poly,
@@ -164,6 +177,7 @@ function Lane({
   onToggle,
   onPaint,
   onParam,
+  onPaintEnd,
   paintRef,
 }: {
   ci: number;
@@ -173,7 +187,7 @@ function Lane({
   mute: boolean;
   solo: boolean;
   locked: boolean;
-  n: number;
+  indices: number[];
   steps: Step[];
   mode: StepMode;
   poly: boolean;
@@ -183,26 +197,15 @@ function Lane({
   onToggle: (i: number) => void;
   onPaint: (i: number, on: boolean) => void;
   onParam: (i: number, patch: Partial<Step>) => void;
+  onPaintEnd: () => void;
   paintRef: React.MutableRefObject<{ on: boolean; ch: number } | null>;
 }) {
   const muteCh = useWorkstation((s) => s.updateChannel);
   return (
     <>
-      <div
-        className={cn(
-          "flex items-center gap-1.5 pr-2",
-          selected && "bg-surface-3/80",
-        )}
-      >
-        <button
-          type="button"
-          onClick={onSelect}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: FAMILY_VAR[family] }}
-          />
+      <div className={cn("flex items-center gap-1.5 pr-2", selected && "bg-surface-3/80")}>
+        <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: FAMILY_VAR[family] }} />
           <span className="font-display truncate text-[12px] font-semibold uppercase tracking-[0.12em] text-fg">
             {name}
           </span>
@@ -232,7 +235,7 @@ function Lane({
           L
         </button>
       </div>
-      {Array.from({ length: n }, (_, si) => {
+      {indices.map((si) => {
         const st = steps[si]!;
         const dim = poly && si >= laneLength;
         const v = cellVisual(st, mode);
@@ -273,15 +276,14 @@ function Lane({
             }}
             onPointerUp={() => {
               paintRef.current = null;
+              onPaintEnd();
             }}
             onContextMenu={(e) => {
               e.preventDefault();
               if (st.on) onParam(si, { velocity: st.velocity > 0.7 ? 0.35 : 1 });
             }}
           >
-            {st.on && (
-              <span className="vel" style={{ height: `${Math.max(12, v * 88)}%` }} />
-            )}
+            {st.on && <span className="vel" style={{ height: `${Math.max(12, v * 88)}%` }} />}
           </button>
         );
       })}
@@ -301,6 +303,7 @@ function applyMode(
   else if (mode === "probability") set({ probability: y });
   else if (mode === "pitch") set({ pitch: Math.round((y * 24 - 12) * 2) / 2 });
   else if (mode === "micro") set({ micro: y * 2 - 1 });
+  else if (mode === "length") set({ length: Math.max(0.1, y) });
   else if (mode === "ratchet") {
     const opts: Step["ratchet"][] = [1, 2, 3, 4, 6, 8];
     set({ ratchet: opts[Math.min(opts.length - 1, Math.floor(y * opts.length))]! });

@@ -31,11 +31,19 @@ export class AudioEngine {
   private channelInput: GainNode[] = [];
   private channelOut: GainNode[] = [];
   private channelPan: StereoPannerNode[] = [];
+  private channelEqLow: BiquadFilterNode[] = [];
+  private channelEqMid: BiquadFilterNode[] = [];
+  private channelEqHigh: BiquadFilterNode[] = [];
+  private channelLofi: BiquadFilterNode[] = [];
   private meters = new Float32Array(16);
   private meterDecay = new Float32Array(16);
   private master!: GainNode;
+  private masterEqLow!: BiquadFilterNode;
+  private masterEqMid!: BiquadFilterNode;
+  private masterEqHigh!: BiquadFilterNode;
   private masterAnalyser!: AnalyserNode;
   private reverbSend!: GainNode;
+  private reverbPre!: DelayNode;
   private delaySend!: GainNode;
   private convolver!: ConvolverNode;
   private delayNode!: DelayNode;
@@ -69,12 +77,15 @@ export class AudioEngine {
     const ctx = this.ctx!;
     this.master = ctx.createGain();
     this.reverbSend = ctx.createGain();
+    this.reverbPre = ctx.createDelay(0.12);
+    this.reverbPre.delayTime.value = 0.02;
     this.delaySend = ctx.createGain();
     this.convolver = ctx.createConvolver();
     this.convolver.buffer = makeImpulse(ctx.sampleRate, 2.4, 0.5, 0.4, true);
     const verbOut = ctx.createGain();
     verbOut.gain.value = 0.55;
-    this.reverbSend.connect(this.convolver);
+    this.reverbSend.connect(this.reverbPre);
+    this.reverbPre.connect(this.convolver);
     this.convolver.connect(verbOut);
 
     this.delayNode = ctx.createDelay(2);
@@ -92,6 +103,17 @@ export class AudioEngine {
     this.delayFb.connect(this.delayNode);
     this.delayFilter.connect(delayOut);
 
+    this.masterEqLow = ctx.createBiquadFilter();
+    this.masterEqLow.type = "lowshelf";
+    this.masterEqLow.frequency.value = 110;
+    this.masterEqMid = ctx.createBiquadFilter();
+    this.masterEqMid.type = "peaking";
+    this.masterEqMid.frequency.value = 980;
+    this.masterEqMid.Q.value = 0.9;
+    this.masterEqHigh = ctx.createBiquadFilter();
+    this.masterEqHigh.type = "highshelf";
+    this.masterEqHigh.frequency.value = 6500;
+
     this.punchComp = ctx.createDynamicsCompressor();
     this.tapeShaper = ctx.createWaveShaper();
     this.tapeShaper.curve = makeDriveCurve(0.3);
@@ -107,7 +129,10 @@ export class AudioEngine {
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.5;
 
-    this.master.connect(this.punchComp);
+    this.master.connect(this.masterEqLow);
+    this.masterEqLow.connect(this.masterEqMid);
+    this.masterEqMid.connect(this.masterEqHigh);
+    this.masterEqHigh.connect(this.punchComp);
     this.punchComp.connect(this.tapeShaper);
     this.tapeShaper.connect(this.limiter);
     verbOut.connect(this.limiter);
@@ -119,14 +144,39 @@ export class AudioEngine {
     this.channelInput = [];
     this.channelOut = [];
     this.channelPan = [];
+    this.channelEqLow = [];
+    this.channelEqMid = [];
+    this.channelEqHigh = [];
+    this.channelLofi = [];
     for (let i = 0; i < 16; i++) {
       const input = ctx.createGain();
+      const eqL = ctx.createBiquadFilter();
+      eqL.type = "lowshelf";
+      eqL.frequency.value = 120;
+      const eqM = ctx.createBiquadFilter();
+      eqM.type = "peaking";
+      eqM.frequency.value = 1100;
+      eqM.Q.value = 0.85;
+      const eqH = ctx.createBiquadFilter();
+      eqH.type = "highshelf";
+      eqH.frequency.value = 6000;
+      const lofi = ctx.createBiquadFilter();
+      lofi.type = "lowpass";
+      lofi.frequency.value = 18000;
       const pan = ctx.createStereoPanner();
       const out = ctx.createGain();
-      input.connect(pan);
+      input.connect(eqL);
+      eqL.connect(eqM);
+      eqM.connect(eqH);
+      eqH.connect(lofi);
+      lofi.connect(pan);
       pan.connect(out);
       out.connect(this.master);
       this.channelInput.push(input);
+      this.channelEqLow.push(eqL);
+      this.channelEqMid.push(eqM);
+      this.channelEqHigh.push(eqH);
+      this.channelLofi.push(lofi);
       this.channelPan.push(pan);
       this.channelOut.push(out);
     }
@@ -147,6 +197,7 @@ export class AudioEngine {
     const now = this.ctx.currentTime;
     const r = mixer.reverb;
     this.reverbSend.gain.setTargetAtTime(r.return * 0.9, now, 0.03);
+    this.reverbPre.delayTime.setTargetAtTime(0.004 + r.preDelay * 0.08, now, 0.03);
     const key = `${r.size.toFixed(2)}:${r.decay.toFixed(2)}:${r.damping.toFixed(2)}`;
     if (key !== this.irKey) {
       this.irKey = key;
@@ -164,20 +215,28 @@ export class AudioEngine {
     this.delaySend.gain.setTargetAtTime(d.return * 0.8, now, 0.03);
     const m = mixer.master;
     this.output.gain.setTargetAtTime(0.4 + m.gain * 0.7, now, 0.03);
+    this.masterEqLow.gain.setTargetAtTime(m.eqLow * 14, now, 0.04);
+    this.masterEqMid.gain.setTargetAtTime(m.eqMid * 10, now, 0.04);
+    this.masterEqHigh.gain.setTargetAtTime(m.eqHigh * 12, now, 0.04);
     this.punchComp.threshold.setTargetAtTime(-8 - m.punch * 14, now, 0.05);
     this.punchComp.ratio.setTargetAtTime(2 + m.punch * 6, now, 0.05);
     this.punchComp.attack.setTargetAtTime(0.004, now, 0.05);
     this.punchComp.release.setTargetAtTime(0.08 + (1 - m.punch) * 0.15, now, 0.05);
-    this.tapeShaper.curve = makeDriveCurve(m.tape * 0.9);
+    this.tapeShaper.curve = makeDriveCurve(m.tape * 0.9 + m.clip * 0.35);
     this.limiter.threshold.setTargetAtTime(-1 - m.limiter * 8, now, 0.05);
   }
 
   applyChannelStrip(i: number, ch: DrumChannel, anySolo: boolean) {
     if (!this.ctx) return;
+    const now = this.ctx.currentTime;
     const silent = ch.mute || (anySolo && !ch.solo);
     const g = silent ? 0 : ch.volume * ch.volume;
-    this.channelOut[i]?.gain.setTargetAtTime(g, this.ctx.currentTime, 0.015);
-    this.channelPan[i]?.pan.setTargetAtTime(clamp(ch.pan, -1, 1), this.ctx.currentTime, 0.015);
+    this.channelOut[i]?.gain.setTargetAtTime(g, now, 0.015);
+    this.channelPan[i]?.pan.setTargetAtTime(clamp(ch.pan, -1, 1), now, 0.015);
+    this.channelEqLow[i]?.gain.setTargetAtTime(ch.eqLow * 12, now, 0.03);
+    this.channelEqMid[i]?.gain.setTargetAtTime(ch.eqMid * 10, now, 0.03);
+    this.channelEqHigh[i]?.gain.setTargetAtTime(ch.eqHigh * 12, now, 0.03);
+    this.channelLofi[i]?.frequency.setTargetAtTime(18000 - ch.lofi * 15000, now, 0.04);
   }
 
   setDelayTime(seconds: number) {
@@ -217,14 +276,15 @@ export class AudioEngine {
 
     const velGain = ctx.createGain();
     const vel = clamp(opts.velocity, 0, 1);
-    const punch = 1 + ch.punch * 0.35 * vel;
+    const punch = 1 + ch.punch * 0.35 * vel + ch.snap * 0.22 * vel;
     velGain.gain.setValueAtTime(0.0001, when);
-    const atk = Math.max(0.001, ch.attack);
+    const atk = Math.max(0.001, ch.attack + ch.fadeIn * 0.08);
     const hold = ch.hold;
-    const dec = 0.04 + ch.decay * 1.6;
+    const dec = (0.04 + ch.decay * 1.6) * (0.72 + ch.body * 0.55);
+    const rel = 0.015 + ch.release * 0.7 + ch.fadeOut * 0.45;
     velGain.gain.exponentialRampToValueAtTime(Math.max(0.001, vel * punch), when + atk);
     velGain.gain.setValueAtTime(Math.max(0.001, vel * punch), when + atk + hold);
-    velGain.gain.exponentialRampToValueAtTime(0.0001, when + atk + hold + dec);
+    velGain.gain.exponentialRampToValueAtTime(0.0001, when + atk + hold + dec + rel);
 
     const filter = ctx.createBiquadFilter();
     const fAmt = opts.filter ?? 0.5;
@@ -242,7 +302,7 @@ export class AudioEngine {
     filter.Q.value = 0.4 + ch.resonance * 8;
 
     const shaper = ctx.createWaveShaper();
-    shaper.curve = makeDriveCurve(ch.drive + ch.sat * 0.5);
+    shaper.curve = makeDriveCurve(ch.drive + ch.sat * 0.5 + ch.comp * 0.25);
 
     const panner = ctx.createStereoPanner();
     panner.pan.setValueAtTime(clamp(ch.pan + opts.pan, -1, 1), when);
@@ -265,9 +325,22 @@ export class AudioEngine {
     rSend.connect(this.reverbSend);
     dSend.connect(this.delaySend);
 
+    if (ch.width > 0.05) {
+      const haas = ctx.createDelay(0.03);
+      haas.delayTime.value = 0.0015 + ch.width * 0.01;
+      const wg = ctx.createGain();
+      wg.gain.value = ch.width * 0.65;
+      const wp = ctx.createStereoPanner();
+      wp.pan.value = clamp(-(ch.pan + opts.pan), -1, 1);
+      panner.connect(haas);
+      haas.connect(wg);
+      wg.connect(wp);
+      wp.connect(this.channelInput[chIndex]!);
+    }
+
     src.start(when, 0);
     const dur = (buffer.duration / rate) * (opts.length ?? 1);
-    src.stop(when + dur + 0.05);
+    src.stop(when + dur + rel + 0.08);
 
     const voice: Voice = {
       ch: chIndex,
@@ -365,7 +438,7 @@ export function applyProjectRouting(project: Project) {
   const anySolo = project.channels.some((c) => c.solo);
   project.channels.forEach((ch, i) => audioEngine.applyChannelStrip(i, ch, anySolo));
   audioEngine.applyMixer(project.mixer);
-  const beat = 60 / project.tempo;
+  const beat = 60 / Math.max(40, project.tempo || 120);
   const t = project.mixer.delay.sync
     ? beat * Math.max(0.125, project.mixer.delay.time * 2)
     : Math.max(0.05, project.mixer.delay.time);

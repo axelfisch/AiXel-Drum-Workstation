@@ -2,21 +2,23 @@ import type { SoundDef, SynthLayer } from "@/lib/drum/types";
 
 const METAL_FREQS = [205.3, 304.4, 369.6, 522.7, 715.2, 864.8];
 
-let workCtx: OfflineAudioContext | null = null;
+const ctxCache = new Map<number, OfflineAudioContext>();
 
-function ctx(): OfflineAudioContext {
-  if (workCtx) return workCtx;
-  if (typeof OfflineAudioContext !== "undefined") {
-    workCtx = new OfflineAudioContext(1, 8, 44100);
-    return workCtx;
+function ctx(sr = 44100): { createBuffer: OfflineAudioContext["createBuffer"] } {
+  const rate = Math.max(8000, Math.min(96000, Math.round(sr) || 44100));
+  let cached = ctxCache.get(rate);
+  if (!cached && typeof OfflineAudioContext !== "undefined") {
+    cached = new OfflineAudioContext(2, 8, rate);
+    ctxCache.set(rate, cached);
   }
-  workCtx = {
-    createBuffer(ch: number, n: number, sr: number) {
+  if (cached) return cached;
+  return {
+    createBuffer(ch: number, n: number, sampleRate: number) {
       const channels = Array.from({ length: ch }, () => new Float32Array(n));
       return {
         numberOfChannels: ch,
         length: n,
-        sampleRate: sr,
+        sampleRate,
         copyToChannel(src: Float32Array, channel: number) {
           channels[channel] = new Float32Array(src);
         },
@@ -25,8 +27,7 @@ function ctx(): OfflineAudioContext {
         },
       } as AudioBuffer;
     },
-  } as OfflineAudioContext;
-  return workCtx;
+  };
 }
 
 function biquadLP(x: Float32Array, sr: number, freq: number, q = 0.7) {
@@ -205,13 +206,14 @@ export function renderSoundDef(def: SoundDef, sr = 44100): AudioBuffer {
     mix[i]! *= g;
   }
 
-  const buffer = ctx().createBuffer(1, n, sr);
+  const buffer = ctx(sr).createBuffer(1, n, sr);
   buffer.copyToChannel(mix, 0);
   return buffer;
 }
 
 export function reverseBuffer(buffer: AudioBuffer): AudioBuffer {
-  const out = ctx().createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  const sr = buffer.sampleRate;
+  const out = ctx(sr).createBuffer(buffer.numberOfChannels, buffer.length, sr);
   for (let c = 0; c < buffer.numberOfChannels; c++) {
     const src = buffer.getChannelData(c);
     const dst = out.getChannelData(c);
@@ -224,7 +226,8 @@ export function sliceBuffer(buffer: AudioBuffer, start01: number, end01: number)
   const a = Math.floor(Math.max(0, start01) * buffer.length);
   const b = Math.floor(Math.min(1, Math.max(start01 + 0.01, end01)) * buffer.length);
   const len = Math.max(8, b - a);
-  const out = ctx().createBuffer(buffer.numberOfChannels, len, buffer.sampleRate);
+  const sr = buffer.sampleRate;
+  const out = ctx(sr).createBuffer(buffer.numberOfChannels, len, sr);
   for (let c = 0; c < buffer.numberOfChannels; c++) {
     out.getChannelData(c).set(buffer.getChannelData(c).subarray(a, a + len));
   }
@@ -238,9 +241,9 @@ export function makeImpulse(
   damping: number,
   stereo: boolean,
 ): AudioBuffer {
-  const n = Math.floor(seconds * sr);
+  const n = Math.max(32, Math.floor(seconds * sr));
   const ch = stereo ? 2 : 1;
-  const buf = ctx().createBuffer(ch, n, sr);
+  const buf = ctx(sr).createBuffer(ch, n, sr);
   for (let c = 0; c < ch; c++) {
     const data = buf.getChannelData(c);
     for (let i = 0; i < n; i++) {

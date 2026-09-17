@@ -17,7 +17,7 @@ export function SoundPage() {
 
   return (
     <div className="scroll-thin grid min-h-0 flex-1 gap-4 overflow-auto p-4 lg:grid-cols-[1.1fr_1fr]">
-      <section className="hw-panel rounded-xl p-4">
+      <section className="hw-panel hw-panel--screws rounded-xl p-4">
         <header className="mb-4 flex items-center justify-between">
           <div>
             <p className="font-display text-xs tracking-[0.2em] text-muted uppercase">{ch.name}</p>
@@ -60,7 +60,7 @@ export function SoundPage() {
           />
         </label>
       </section>
-      <section className="hw-panel rounded-xl p-4">
+      <section className="hw-panel hw-panel--screws rounded-xl p-4">
         <h3 className="font-display mb-3 text-sm tracking-[0.18em] text-muted uppercase">Voice</h3>
         <div className="grid grid-cols-4 gap-3">
           <Knob label="Pitch" value={ch.pitch} min={-12} max={12} step={0.5} format={(n) => `${n > 0 ? "+" : ""}${n}`} onChange={(v) => updateChannel(selected, { pitch: v })} />
@@ -199,7 +199,7 @@ export function MixerPage() {
         ))}
       </div>
       <div className="grid gap-3 md:grid-cols-3">
-        <section className="hw-panel rounded-xl p-4">
+        <section className="hw-panel hw-panel--screws rounded-xl p-4">
           <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Reverb Bus</h3>
           <div className="grid grid-cols-3 gap-2">
             <Knob label="Size" value={m.reverb.size} onChange={(v) => updateMixer({ reverb: { ...m.reverb, size: v } })} />
@@ -210,7 +210,7 @@ export function MixerPage() {
             <Knob label="Return" value={m.reverb.return} onChange={(v) => updateMixer({ reverb: { ...m.reverb, return: v } })} />
           </div>
         </section>
-        <section className="hw-panel rounded-xl p-4">
+        <section className="hw-panel hw-panel--screws rounded-xl p-4">
           <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Delay Bus</h3>
           <div className="grid grid-cols-3 gap-2">
             <Knob label="Time" value={m.delay.time} onChange={(v) => updateMixer({ delay: { ...m.delay, time: v } })} />
@@ -228,7 +228,7 @@ export function MixerPage() {
             </label>
           </div>
         </section>
-        <section className="hw-panel rounded-xl p-4">
+        <section className="hw-panel hw-panel--screws rounded-xl p-4">
           <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Master</h3>
           <div className="grid grid-cols-3 gap-2">
             <Knob label="Low" value={m.master.eqLow} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqLow: v } })} />

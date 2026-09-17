@@ -13,7 +13,9 @@ export type StepMode =
   | "micro"
   | "ratchet"
   | "filter"
-  | "reverb";
+  | "reverb"
+  | "length";
+
 export type PageId = "sequencer" | "sound" | "mixer" | "song" | "browser";
 export type StepCount = 16 | 24 | 32 | 64;
 export type Ratchet = 1 | 2 | 3 | 4 | 6 | 8;
@@ -26,7 +28,8 @@ export type GrooveId =
   | "house"
   | "broken"
   | "brazilian"
-  | "human";
+  | "human"
+  | "neo-soul";
 export type GenreId =
   | "hiphop"
   | "funk"

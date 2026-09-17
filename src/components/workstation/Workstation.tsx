@@ -1,17 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Copy,
-  Download,
-  FlipHorizontal,
-  Pause,
-  Play,
-  Redo2,
-  Square,
-  Undo2,
-} from "lucide-react";
+import { Pause, Play, Square } from "lucide-react";
 import { KIT_BY_ID, SOUND_BY_ID } from "@/lib/drum/library";
 import { GENRE_LABELS, GROOVE_LABELS, PAD_KEYS, STEP_MODE_LABELS } from "@/lib/drum/defaults";
-import { patternLetter } from "@/lib/utils";
+import { gainToDb, patternLetter } from "@/lib/utils";
 import type { GenreId, GrooveId, PageId, StepCount, StepMode } from "@/lib/drum/types";
 import { audioEngine } from "@/engine/audio-engine";
 import { downloadBlob, patternToMidi } from "@/engine/midi";
@@ -32,7 +23,6 @@ export function Workstation() {
   const project = useWorkstation((s) => s.project);
   const page = useWorkstation((s) => s.page);
   const playing = useWorkstation((s) => s.playing);
-  const selected = useWorkstation((s) => s.selected);
   const stepMode = useWorkstation((s) => s.stepMode);
   const timeScale = useWorkstation((s) => s.timeScale);
   const songMode = useWorkstation((s) => s.songMode);
@@ -52,7 +42,6 @@ export function Workstation() {
   const redo = useWorkstation((s) => s.redo);
   const triggerPad = useWorkstation((s) => s.triggerPad);
   const assignMidi = useWorkstation((s) => s.assignMidi);
-  const midiLearn = useWorkstation((s) => s.midiLearn);
 
   useEffect(() => {
     initFromStorage();
@@ -84,32 +73,36 @@ export function Workstation() {
   }, [togglePlay, undo, redo, triggerPad]);
 
   useEffect(() => {
-    let access: MIDIAccess | null = null;
-    const noteOn = (note: number, vel: number) => {
-      if (useWorkstation.getState().midiLearn) {
-        assignMidi(note);
-        return;
+    const inputs: MIDIInput[] = [];
+    const hook = (ev: MIDIMessageEvent) => {
+      const d = ev.data;
+      if (!d || d.length < 3) return;
+      const cmd = d[0]! & 0xf0;
+      if (cmd === 0x90 && d[2]! > 0) {
+        const note = d[1]!;
+        const vel = d[2]!;
+        const st = useWorkstation.getState();
+        if (st.midiLearn) {
+          assignMidi(note);
+          return;
+        }
+        const idx = st.project.midiMap.findIndex((n) => n === note);
+        if (idx >= 0) st.triggerPad(idx, vel / 127);
       }
-      const map = useWorkstation.getState().project.midiMap;
-      const idx = map.findIndex((n) => n === note);
-      if (idx >= 0) triggerPad(idx, vel / 127);
     };
-    navigator.requestMIDIAccess?.().then((midi) => {
-      access = midi;
-      const hook = (ev: MIDIMessageEvent) => {
-        const d = ev.data;
-        if (!d || d.length < 3) return;
-        const cmd = d[0]! & 0xf0;
-        if (cmd === 0x90 && d[2]! > 0) noteOn(d[1]!, d[2]!);
-      };
-      midi.inputs.forEach((input) => {
-        input.addEventListener("midimessage", hook as EventListener);
-      });
-    }).catch(() => undefined);
+    navigator
+      .requestMIDIAccess?.()
+      .then((midi) => {
+        midi.inputs.forEach((input) => {
+          input.addEventListener("midimessage", hook as EventListener);
+          inputs.push(input);
+        });
+      })
+      .catch(() => undefined);
     return () => {
-      access = null;
+      for (const input of inputs) input.removeEventListener("midimessage", hook as EventListener);
     };
-  }, [assignMidi, triggerPad]);
+  }, [assignMidi]);
 
   useEffect(() => {
     let raf = 0;
@@ -132,32 +125,36 @@ export function Workstation() {
         tempo={project.tempo}
         swing={project.swing}
         humanize={project.humanize}
+        playing={playing}
+        onTempo={setTempo}
+        onSwing={setSwing}
+        onHumanize={setHumanize}
+        onPlay={togglePlay}
+        onStop={stop}
+      />
+      <PerformanceBar
+        timeScale={timeScale}
+        songMode={songMode}
         groove={project.groove}
         stepCount={project.stepCount}
         poly={project.polyMode}
         patternIndex={project.patternIndex}
-        playing={playing}
-        midiLearn={midiLearn}
-        onTempo={setTempo}
-        onSwing={setSwing}
-        onHumanize={setHumanize}
         onGroove={setGroove}
         onSteps={setStepCount}
         onPoly={setPoly}
         onPattern={setPattern}
-        onPlay={togglePlay}
-        onStop={stop}
         onUndo={undo}
         onRedo={redo}
       />
-      <PerformanceBar timeScale={timeScale} songMode={songMode} />
-      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-3 py-2">
+      <nav className="flex shrink-0 items-center gap-1 px-5 py-2">
         {PAGES.map((p) => (
           <button
             key={p.id}
             type="button"
             onClick={() => setPage(p.id)}
-            className={`font-display rounded-md px-3 py-1.5 text-xs tracking-[0.18em] uppercase ${page === p.id ? "bg-surface-3 text-fg" : "text-muted"}`}
+            className={`font-display px-3 py-1.5 text-[11px] tracking-[0.22em] uppercase ${
+              page === p.id ? "border-b border-led text-fg" : "text-subtle"
+            }`}
           >
             {p.label}
           </button>
@@ -165,7 +162,7 @@ export function Workstation() {
       </nav>
       {page === "sequencer" && (
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3 pt-0">
             <SequencerGrid />
             <StepEditor mode={stepMode} />
           </div>
@@ -203,176 +200,171 @@ function TopBar(props: {
   tempo: number;
   swing: number;
   humanize: number;
-  groove: GrooveId;
-  stepCount: StepCount;
-  poly: boolean;
-  patternIndex: number;
   playing: boolean;
-  midiLearn: boolean;
   onTempo: (n: number) => void;
   onSwing: (n: number) => void;
   onHumanize: (n: number) => void;
-  onGroove: (g: GrooveId) => void;
-  onSteps: (n: StepCount) => void;
-  onPoly: (on: boolean) => void;
-  onPattern: (i: number) => void;
   onPlay: () => void;
   onStop: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
 }) {
   const rename = useWorkstation((s) => s.renameProject);
-  const setMidiLearn = useWorkstation((s) => s.setMidiLearn);
   const project = useWorkstation((s) => s.project);
+  const updateMixer = useWorkstation((s) => s.updateMixer);
+  const randomAmount = useWorkstation((s) => s.randomAmount);
+  const mutateAmount = useWorkstation((s) => s.mutateAmount);
+  const fillAmount = useWorkstation((s) => s.fillAmount);
+  const setRandomAmount = useWorkstation((s) => s.setRandomAmount);
+  const setMutateAmount = useWorkstation((s) => s.setMutateAmount);
+  const setFill = useWorkstation((s) => s.setFill);
+  const recording = useWorkstation((s) => s.recording);
+  const setRecording = useWorkstation((s) => s.setRecording);
+  const page = useWorkstation((s) => s.page);
+  const setPage = useWorkstation((s) => s.setPage);
+  const midiLearn = useWorkstation((s) => s.midiLearn);
   const [editing, setEditing] = useState(false);
+  const pageIndex = Math.max(0, PAGES.findIndex((p) => p.id === page));
 
   return (
-    <header className="flex shrink-0 flex-nowrap items-center gap-2 overflow-x-auto border-b border-border bg-surface px-3 py-2">
-      <div className="flex items-center gap-2 pr-3">
-        <span className={`led-dot ${props.playing ? "on" : ""}`} />
-        <div>
-          <p className="font-display text-[10px] tracking-[0.28em] text-muted uppercase">AiXel</p>
-          {editing ? (
-            <input
-              autoFocus
-              defaultValue={props.name}
-              className="bg-transparent font-display text-sm tracking-wide outline-none"
-              onBlur={(e) => {
-                rename(e.target.value || props.name);
-                setEditing(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-            />
-          ) : (
-            <button type="button" onClick={() => setEditing(true)} className="font-display whitespace-nowrap text-sm tracking-wide">
-              {props.name}
-            </button>
-          )}
+    <header className="hw-panel hw-panel--screws mx-3 mt-3 shrink-0 px-5 pt-4 pb-3">
+      <div className="mb-3 flex items-end justify-between gap-4">
+        <div className="flex items-end gap-6">
+          <div>
+            <p className="font-display text-2xl leading-none tracking-[0.02em] text-fg">AiXel</p>
+            <p className="engraved mt-1">Drum Workstation</p>
+          </div>
+          <div className="hidden pb-0.5 sm:block">
+            <p className="engraved">Project</p>
+            {editing ? (
+              <input
+                autoFocus
+                defaultValue={props.name}
+                className="bg-transparent font-display text-lg tracking-wide outline-none"
+                onBlur={(e) => {
+                  rename(e.target.value || props.name);
+                  setEditing(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                }}
+              />
+            ) : (
+              <button type="button" onClick={() => setEditing(true)} className="font-display text-lg tracking-wide">
+                {props.name}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex items-start gap-5">
+          <div className="hidden text-right md:block">
+            <p className="engraved">Kit</p>
+            <p className="font-display text-lg leading-tight">{props.kitName}</p>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <span className={`led-dot ${props.playing ? "on" : ""}`} title="Run" />
+            <span className={`led-dot ${midiLearn ? "on" : ""}`} title="MIDI" />
+          </div>
         </div>
       </div>
-      <div className="hidden shrink-0 whitespace-nowrap text-xs text-subtle xl:block">{props.kitName}</div>
-      <label className="flex items-center gap-2 font-mono text-xs">
-        <span className="text-subtle">BPM</span>
-        <input
-          type="number"
-          value={props.tempo}
-          min={40}
-          max={220}
-          onChange={(e) => props.onTempo(Number(e.target.value))}
-          className="w-14 rounded-md border border-border bg-surface-2 px-2 py-1 tabular-nums"
+
+      <div className="flex items-end gap-4 overflow-x-auto pb-1">
+        <Knob
+          label="Master"
+          value={project.mixer.master.gain}
+          format={(n) => `${gainToDb(0.4 + n * 0.7).toFixed(1)} dB`}
+          onChange={(v) => updateMixer({ master: { ...project.mixer.master, gain: v } })}
         />
-      </label>
-      <label className="hidden items-center gap-2 text-xs sm:flex">
-        <span className="text-subtle">Swing</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={props.swing}
-          onChange={(e) => props.onSwing(Number(e.target.value))}
-          className="w-20 accent-[var(--color-led)]"
-        />
-        <span className="font-mono w-6 tabular-nums text-muted">{props.swing}</span>
-      </label>
-      <label className="hidden items-center gap-2 text-xs lg:flex">
-        <span className="text-subtle">Human</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
+        <Knob label="Swing" value={props.swing} min={0} max={100} step={1} format={(n) => `${Math.round(n)}`} onChange={props.onSwing} />
+        <Knob
+          label="Humanize"
           value={props.humanize}
-          onChange={(e) => props.onHumanize(Number(e.target.value))}
-          className="w-16 accent-[var(--color-led)]"
+          min={0}
+          max={100}
+          step={1}
+          format={(n) => `${Math.round(n)}`}
+          onChange={props.onHumanize}
         />
-      </label>
-      <select
-        value={props.groove}
-        onChange={(e) => props.onGroove(e.target.value as GrooveId)}
-        className="hidden rounded-md border border-border bg-surface-2 px-2 py-1 text-xs md:block"
-      >
-        {Object.entries(GROOVE_LABELS).map(([id, label]) => (
-          <option key={id} value={id}>
-            {label}
-          </option>
-        ))}
-      </select>
-      <div className="flex gap-1">
-        {([16, 24, 32, 64] as StepCount[]).map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => props.onSteps(n)}
-            className={`rounded-md px-2 py-1 font-mono text-[10px] ${props.stepCount === n ? "bg-surface-3 text-fg" : "text-subtle"}`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={() => props.onPoly(!props.poly)}
-        className={`rounded-md px-2 py-1 text-[10px] tracking-widest uppercase ${props.poly ? "text-led" : "text-subtle"}`}
-      >
-        Poly
-      </button>
-      <div className="flex max-w-[220px] gap-0.5 overflow-x-auto">
-        {Array.from({ length: 16 }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => props.onPattern(i)}
-            className={`h-7 w-7 shrink-0 rounded-md font-display text-xs ${props.patternIndex === i ? "bg-led text-bg" : "bg-surface-2 text-muted"}`}
-          >
-            {patternLetter(i)}
-          </button>
-        ))}
-      </div>
-      <div className="ml-auto flex items-center gap-1">
-        <button type="button" className="rounded-md p-2 text-muted" onClick={props.onUndo} aria-label="Undo">
-          <Undo2 className="size-4" />
-        </button>
-        <button type="button" className="rounded-md p-2 text-muted" onClick={props.onRedo} aria-label="Redo">
-          <Redo2 className="size-4" />
-        </button>
-        <button
-          type="button"
-          className={`rounded-md p-2 ${props.midiLearn ? "text-led" : "text-muted"}`}
-          onClick={() => setMidiLearn(!props.midiLearn)}
-        >
-          MIDI
-        </button>
-        <button
-          type="button"
-          className="rounded-md p-2 text-muted"
-          title="Export MIDI"
-          onClick={() => downloadBlob(patternToMidi(project), `${project.name}.mid`)}
-        >
-          <Download className="size-4" />
-        </button>
-        <button
-          type="button"
-          onClick={props.onStop}
-          className="rounded-md p-2 text-muted"
-          aria-label="Stop"
-        >
-          <Square className="size-4 fill-current" />
-        </button>
-        <button
-          type="button"
-          onClick={props.onPlay}
-          className="rounded-md bg-fg p-2 text-bg"
-          aria-label={props.playing ? "Pause" : "Play"}
-        >
-          {props.playing ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
-        </button>
+        <Knob label="Random" value={randomAmount} step={0.01} format={(n) => n.toFixed(2)} onChange={setRandomAmount} />
+        <Knob label="Mutate" value={mutateAmount} step={0.01} format={(n) => n.toFixed(2)} onChange={setMutateAmount} />
+        <Knob label="Fill" value={fillAmount} step={0.01} format={(n) => n.toFixed(2)} onChange={(v) => setFill({ fillAmount: v })} />
+
+        <div className="ml-auto flex shrink-0 items-end gap-4">
+          <div className="flex flex-col items-center gap-1">
+            <p className="engraved">Transport</p>
+            <div className="flex items-center gap-1">
+              <button type="button" className="transport-btn" onClick={props.onPlay} aria-label={props.playing ? "Pause" : "Play"}>
+                {props.playing ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}
+              </button>
+              <button type="button" className="transport-btn" onClick={props.onStop} aria-label="Stop">
+                <Square className="size-3 fill-current" />
+              </button>
+              <button
+                type="button"
+                className={`transport-btn rec ${recording ? "on" : ""}`}
+                onClick={() => setRecording(!recording)}
+                aria-pressed={recording}
+              >
+                REC
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <p className="engraved">Tempo</p>
+            <Knob
+              label=""
+              value={props.tempo}
+              min={40}
+              max={220}
+              step={0.5}
+              format={() => ""}
+              onChange={props.onTempo}
+            />
+            <div className="lcd px-2 py-0.5 font-mono text-[11px] tabular-nums">{props.tempo.toFixed(1)}</div>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <p className="engraved">Screen / Menu</p>
+            <Knob
+              label="Page"
+              value={pageIndex}
+              min={0}
+              max={PAGES.length - 1}
+              step={1}
+              format={() => ""}
+              onChange={(v) => setPage(PAGES[Math.round(v)]!.id)}
+            />
+          </div>
+        </div>
       </div>
     </header>
   );
 }
 
-function PerformanceBar({ timeScale, songMode }: { timeScale: number; songMode: boolean }) {
+function PerformanceBar({
+  timeScale,
+  songMode,
+  groove,
+  stepCount,
+  poly,
+  patternIndex,
+  onGroove,
+  onSteps,
+  onPoly,
+  onPattern,
+  onUndo,
+  onRedo,
+}: {
+  timeScale: number;
+  songMode: boolean;
+  groove: GrooveId;
+  stepCount: StepCount;
+  poly: boolean;
+  patternIndex: number;
+  onGroove: (g: GrooveId) => void;
+  onSteps: (n: StepCount) => void;
+  onPoly: (on: boolean) => void;
+  onPattern: (i: number) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+}) {
   const mutate = useWorkstation((s) => s.mutate);
   const fillNow = useWorkstation((s) => s.fillNow);
   const setTimeScale = useWorkstation((s) => s.setTimeScale);
@@ -382,137 +374,138 @@ function PerformanceBar({ timeScale, songMode }: { timeScale: number; songMode: 
   const pastePattern = useWorkstation((s) => s.pastePattern);
   const clearPattern = useWorkstation((s) => s.clearPattern);
   const duplicatePattern = useWorkstation((s) => s.duplicatePattern);
-  const randomAmount = useWorkstation((s) => s.randomAmount);
-  const mutateAmount = useWorkstation((s) => s.mutateAmount);
-  const setRandomAmount = useWorkstation((s) => s.setRandomAmount);
-  const setMutateAmount = useWorkstation((s) => s.setMutateAmount);
   const genre = useWorkstation((s) => s.genre);
   const setGenre = useWorkstation((s) => s.setGenre);
-  const fillAmount = useWorkstation((s) => s.fillAmount);
-  const fillComplexity = useWorkstation((s) => s.fillComplexity);
-  const fillLength = useWorkstation((s) => s.fillLength);
-  const setFill = useWorkstation((s) => s.setFill);
+  const setMidiLearn = useWorkstation((s) => s.setMidiLearn);
+  const midiLearn = useWorkstation((s) => s.midiLearn);
+  const project = useWorkstation((s) => s.project);
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
-      <button type="button" onClick={fillNow} className="rounded-md bg-surface-3 px-3 py-1.5 font-display text-[11px] tracking-[0.16em] uppercase">
-        Fill
-      </button>
-      <button type="button" onClick={mutate} className="rounded-md bg-surface-3 px-3 py-1.5 font-display text-[11px] tracking-[0.16em] uppercase">
-        Mutate
-      </button>
-      <button
-        type="button"
-        onClick={() => setTimeScale(timeScale === 0.5 ? 1 : 0.5)}
-        className={`rounded-md px-3 py-1.5 font-display text-[11px] tracking-[0.16em] uppercase ${timeScale === 0.5 ? "text-led" : "text-muted"}`}
-      >
-        Half
-      </button>
-      <button
-        type="button"
-        onClick={() => setTimeScale(timeScale === 2 ? 1 : 2)}
-        className={`rounded-md px-3 py-1.5 font-display text-[11px] tracking-[0.16em] uppercase ${timeScale === 2 ? "text-led" : "text-muted"}`}
-      >
-        Double
-      </button>
-      <button
-        type="button"
-        onClick={() => setSongMode(!songMode)}
-        className={`rounded-md px-3 py-1.5 font-display text-[11px] tracking-[0.16em] uppercase ${songMode ? "text-led" : "text-muted"}`}
-      >
-        Song
-      </button>
-      <span className="mx-1 h-4 w-px bg-border" />
-      <select
-        value={genre}
-        onChange={(e) => setGenre(e.target.value as GenreId)}
-        className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
-      >
-        {Object.entries(GENRE_LABELS).map(([id, label]) => (
-          <option key={id} value={id}>
-            {label}
-          </option>
-        ))}
-      </select>
-      <button type="button" onClick={() => randomize("pattern")} className="rounded-md border border-border px-2 py-1 text-[11px] text-muted">
-        Randomize
-      </button>
-      <button type="button" onClick={() => randomize("track")} className="hidden rounded-md border border-border px-2 py-1 text-[11px] text-muted sm:inline">
-        Track
-      </button>
-      <button type="button" onClick={() => randomize("velocity")} className="hidden rounded-md border border-border px-2 py-1 text-[11px] text-muted md:inline">
-        Velocity
-      </button>
-      <button type="button" onClick={() => randomize("timing")} className="hidden rounded-md border border-border px-2 py-1 text-[11px] text-muted md:inline">
-        Timing
-      </button>
-      <label className="hidden items-center gap-1 text-[10px] text-subtle lg:flex">
-        Amt
-        <input
-          type="range"
-          min={0.05}
-          max={1}
-          step={0.05}
-          value={randomAmount}
-          onChange={(e) => setRandomAmount(Number(e.target.value))}
-          className="w-16 accent-[var(--color-led)]"
-        />
-      </label>
-      <label className="hidden items-center gap-1 text-[10px] text-subtle lg:flex">
-        Mut
-        <input
-          type="range"
-          min={0.05}
-          max={1}
-          step={0.05}
-          value={mutateAmount}
-          onChange={(e) => setMutateAmount(Number(e.target.value))}
-          className="w-16 accent-[var(--color-led)]"
-        />
-      </label>
-      <label className="hidden items-center gap-1 text-[10px] text-subtle xl:flex">
-        Fill
-        <input
-          type="range"
-          min={0.1}
-          max={1}
-          step={0.05}
-          value={fillAmount}
-          onChange={(e) => setFill({ fillAmount: Number(e.target.value) })}
-          className="w-12 accent-[var(--color-led)]"
-        />
-        <input
-          type="range"
-          min={0.1}
-          max={1}
-          step={0.05}
-          value={fillComplexity}
-          onChange={(e) => setFill({ fillComplexity: Number(e.target.value) })}
-          className="w-12 accent-[var(--color-led)]"
-        />
-        <select
-          value={fillLength}
-          onChange={(e) => setFill({ fillLength: Number(e.target.value) as 4 | 8 | 16 })}
-          className="bg-transparent"
-        >
-          <option value={4}>1 beat</option>
-          <option value={8}>2 beats</option>
-          <option value={16}>1 bar</option>
-        </select>
-      </label>
-      <span className="mx-1 hidden h-4 w-px bg-border md:block" />
-      <button type="button" onClick={copyPattern} className="hidden p-1 text-muted md:inline" aria-label="Copy">
-        <Copy className="size-3.5" />
-      </button>
-      <button type="button" onClick={pastePattern} className="hidden p-1 text-muted md:inline" aria-label="Paste">
-        <FlipHorizontal className="size-3.5" />
-      </button>
-      <button type="button" onClick={duplicatePattern} className="hidden text-[11px] text-muted md:inline">
-        Dup
-      </button>
-      <button type="button" onClick={clearPattern} className="hidden text-[11px] text-subtle md:inline">
-        Clear
-      </button>
+    <div className="hw-panel mx-3 mt-3 shrink-0 px-4 py-3">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        <div>
+          <p className="engraved mb-1">Pattern</p>
+          <div className="grid grid-cols-10 gap-0.5">
+            {Array.from({ length: 16 }, (_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onPattern(i)}
+                className={`pat-key ${patternIndex === i ? "on" : ""} ${i >= 10 ? "col-auto" : ""}`}
+              >
+                {patternLetter(i)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="engraved mb-1">Steps</p>
+          <div className="flex flex-wrap gap-1">
+            {([16, 24, 32, 64] as StepCount[]).map((n) => (
+              <button key={n} type="button" onClick={() => onSteps(n)} className={`hw-btn ${stepCount === n ? "on" : ""}`}>
+                {n}
+              </button>
+            ))}
+            <button type="button" onClick={() => onPoly(!poly)} className={`hw-btn ${poly ? "on" : ""}`}>
+              Poly
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="engraved mb-1">Feel</p>
+          <div className="flex gap-1">
+            <select value={groove} onChange={(e) => onGroove(e.target.value as GrooveId)} className="hw-select">
+              {Object.entries(GROOVE_LABELS).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select value={genre} onChange={(e) => setGenre(e.target.value as GenreId)} className="hw-select">
+              {Object.entries(GENRE_LABELS).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <p className="engraved mb-1">Perform</p>
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={fillNow} className="hw-btn">
+              Fill
+            </button>
+            <button type="button" onClick={mutate} className="hw-btn">
+              Mutate
+            </button>
+            <button type="button" onClick={() => setTimeScale(timeScale === 0.5 ? 1 : 0.5)} className={`hw-btn ${timeScale === 0.5 ? "on" : ""}`}>
+              Half
+            </button>
+            <button type="button" onClick={() => setTimeScale(timeScale === 2 ? 1 : 2)} className={`hw-btn ${timeScale === 2 ? "on" : ""}`}>
+              Double
+            </button>
+            <button type="button" onClick={() => setSongMode(!songMode)} className={`hw-btn ${songMode ? "on" : ""}`}>
+              Song
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="engraved mb-1">Randomize</p>
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={() => randomize("pattern")} className="hw-btn">
+              Pattern
+            </button>
+            <button type="button" onClick={() => randomize("track")} className="hw-btn">
+              Track
+            </button>
+            <button type="button" onClick={() => randomize("velocity")} className="hw-btn">
+              Velocity
+            </button>
+            <button type="button" onClick={() => randomize("timing")} className="hw-btn">
+              Timing
+            </button>
+          </div>
+        </div>
+
+        <div className="ml-auto">
+          <p className="engraved mb-1">Edit</p>
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={copyPattern} className="hw-btn">
+              Copy
+            </button>
+            <button type="button" onClick={pastePattern} className="hw-btn">
+              Paste
+            </button>
+            <button type="button" onClick={duplicatePattern} className="hw-btn">
+              Dup
+            </button>
+            <button type="button" onClick={clearPattern} className="hw-btn">
+              Clear
+            </button>
+            <button type="button" onClick={onUndo} className="hw-btn">
+              Undo
+            </button>
+            <button type="button" onClick={onRedo} className="hw-btn">
+              Redo
+            </button>
+            <button type="button" onClick={() => setMidiLearn(!midiLearn)} className={`hw-btn ${midiLearn ? "on" : ""}`}>
+              Midi
+            </button>
+            <button
+              type="button"
+              className="hw-btn"
+              onClick={() => downloadBlob(patternToMidi(project), `${project.name}.mid`)}
+            >
+              Export
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -524,37 +517,40 @@ function StepEditor({ mode }: { mode: StepMode }) {
   const setStepParam = useWorkstation((s) => s.setStepParam);
   const currentStep = useWorkstation((s) => s.currentStep);
   const step = project.patterns[project.patternIndex]!.steps[selected]![currentStep]!;
+  const modes = (Object.keys(STEP_MODE_LABELS) as StepMode[]).filter((m) =>
+    ["velocity", "probability", "ratchet", "micro", "length", "trigger", "pitch"].includes(m),
+  );
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-      {(Object.keys(STEP_MODE_LABELS) as StepMode[]).map((m) => (
+      {modes.map((m) => (
         <button
           key={m}
           type="button"
           onClick={() => setStepMode(m)}
-          className={`font-display rounded-md px-2 py-1 text-[10px] tracking-[0.14em] uppercase ${mode === m ? "bg-surface-3 text-fg" : "text-subtle"}`}
+          className={`hw-btn ${mode === m ? "on" : ""}`}
         >
           {STEP_MODE_LABELS[m]}
         </button>
       ))}
       <span className="ml-auto font-mono text-[10px] text-subtle">
-        {project.channels[selected]!.name} · step {currentStep + 1}
+        {project.channels[selected]!.name} · step {String(currentStep + 1).padStart(2, "0")}
         {step.on
           ? ` · vel ${Math.round(step.velocity * 127)} · p ${Math.round(step.probability * 100)}% · ${step.ratchet}x`
           : " · empty"}
       </span>
       {step.on && (
         <div className="hidden gap-1 md:flex">
-          <button type="button" className="text-[10px] text-muted" onClick={() => setStepParam(selected, currentStep, { velocity: 0.32 })}>
+          <button type="button" className="hw-btn" onClick={() => setStepParam(selected, currentStep, { velocity: 0.32 })}>
             Ghost
           </button>
-          <button type="button" className="text-[10px] text-muted" onClick={() => setStepParam(selected, currentStep, { velocity: 0.72 })}>
+          <button type="button" className="hw-btn" onClick={() => setStepParam(selected, currentStep, { velocity: 0.72 })}>
             Normal
           </button>
-          <button type="button" className="text-[10px] text-muted" onClick={() => setStepParam(selected, currentStep, { velocity: 0.92 })}>
+          <button type="button" className="hw-btn" onClick={() => setStepParam(selected, currentStep, { velocity: 0.92 })}>
             Accent
           </button>
-          <button type="button" className="text-[10px] text-muted" onClick={() => setStepParam(selected, currentStep, { velocity: 1 })}>
+          <button type="button" className="hw-btn" onClick={() => setStepParam(selected, currentStep, { velocity: 1 })}>
             Full
           </button>
         </div>
@@ -569,21 +565,20 @@ function Inspector() {
   const updateChannel = useWorkstation((s) => s.updateChannel);
   const nextSample = useWorkstation((s) => s.nextSample);
   const loadUserSample = useWorkstation((s) => s.loadUserSample);
-  const setPoly = useWorkstation((s) => s.setPoly);
   const ch = project.channels[selected]!;
   const sound = SOUND_BY_ID[ch.soundId];
   const peak = useWorkstation((s) => s.masterPeak);
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col gap-3 overflow-auto border-l border-border bg-surface p-3 lg:flex">
+    <aside className="hw-panel mx-3 mb-3 hidden w-72 shrink-0 flex-col gap-3 overflow-auto p-4 lg:flex">
       <div>
-        <p className="font-display text-[10px] tracking-[0.22em] text-muted uppercase">{ch.name}</p>
-        <p className="font-display text-lg">{sound?.name ?? "User sample"}</p>
+        <p className="engraved">{ch.name}</p>
+        <p className="font-display text-xl leading-tight">{sound?.name ?? "User sample"}</p>
         <div className="mt-2 flex gap-1">
-          <button type="button" className="rounded-md border border-border px-2 py-1 text-[10px] text-muted" onClick={() => nextSample(-1)}>
+          <button type="button" className="hw-btn" onClick={() => nextSample(-1)}>
             Prev
           </button>
-          <button type="button" className="rounded-md border border-border px-2 py-1 text-[10px] text-muted" onClick={() => nextSample(1)}>
+          <button type="button" className="hw-btn" onClick={() => nextSample(1)}>
             Next
           </button>
         </div>
@@ -598,28 +593,12 @@ function Inspector() {
         <Knob label="Punch" value={ch.punch} onChange={(v) => updateChannel(selected, { punch: v })} />
         <Knob label="Tone" value={ch.tone} onChange={(v) => updateChannel(selected, { tone: v })} />
       </div>
-      {project.polyMode && (
-        <label className="text-[10px] text-muted">
-          Lane length
-          <input
-            type="number"
-            min={1}
-            max={64}
-            value={ch.laneLength}
-            className="mt-1 w-full rounded-md border border-border bg-surface-2 px-2 py-1"
-            onChange={(e) => updateChannel(selected, { laneLength: Number(e.target.value) })}
-          />
-        </label>
-      )}
-      <button type="button" className="text-left text-[10px] text-subtle" onClick={() => setPoly(!project.polyMode)}>
-        {project.polyMode ? "Disable polyrhythm" : "Enable polyrhythm"}
-      </button>
-      <label className="block text-[10px] text-muted">
-        Replace sample
+      <label className="engraved block">
+        Replace sample · WAV / AIFF
         <input
           type="file"
           accept="audio/*"
-          className="mt-1 block w-full text-[10px]"
+          className="mt-1 block w-full text-[10px] text-muted"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void loadUserSample(f);
@@ -627,7 +606,7 @@ function Inspector() {
         />
       </label>
       <div>
-        <p className="mb-1 text-[10px] tracking-widest text-subtle uppercase">Master</p>
+        <p className="engraved mb-1">Master</p>
         <div className="h-1.5 overflow-hidden rounded-full bg-bg">
           <div className="h-full bg-led" style={{ width: `${Math.min(100, peak * 140)}%` }} />
         </div>
@@ -643,7 +622,7 @@ function PadRow() {
   const select = useWorkstation((s) => s.select);
   const keys = useMemo(() => PAD_KEYS, []);
   return (
-    <footer className="flex shrink-0 gap-1 overflow-x-auto border-t border-border bg-surface px-3 py-2">
+    <footer className="flex shrink-0 gap-1 overflow-x-auto px-3 pb-3">
       {project.channels.map((ch, i) => (
         <button
           key={ch.id}
@@ -652,7 +631,9 @@ function PadRow() {
             select(i);
             triggerPad(i, 0.95);
           }}
-          className={`min-w-[52px] flex-1 rounded-md border px-1 py-2 ${selected === i ? "border-led/50 bg-surface-3" : "border-border bg-surface-2"}`}
+          className={`min-w-[52px] flex-1 rounded-md border px-1 py-2 ${
+            selected === i ? "border-led/50 bg-surface-3" : "border-border bg-surface"
+          }`}
         >
           <span className="block font-mono text-[9px] text-subtle">{keys[i]}</span>
           <span className="font-display block text-[10px] tracking-wide uppercase">{ch.name.split(" ")[0]}</span>

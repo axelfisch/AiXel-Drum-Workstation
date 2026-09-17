@@ -1,4 +1,4 @@
-import { CHANNEL_COUNT, clonePattern, emptyStep, hitStep, type GenreId, type Pattern, type Project, type Step } from "@/lib/drum/types";
+import { CHANNEL_COUNT, clonePattern, emptyStep, hitStep, type GenreId, type Pattern, type Step } from "@/lib/drum/types";
 
 function rand() {
   return Math.random();
@@ -157,16 +157,25 @@ export function mutatePattern(pattern: Pattern, amount: number, locked: boolean[
   return out;
 }
 
-export function makeFill(pattern: Pattern, length: number, complexity: number, amount: number): Step[][] {
+export function makeFill(
+  pattern: Pattern,
+  length: number,
+  complexity: number,
+  amount: number,
+  stepCount = 32,
+): Step[][] {
   const out = pattern.steps.map(cloneLane);
-  const start = Math.max(0, 32 - length);
+  const laneLen = out[0]?.length ?? 64;
+  const len = Math.min(Math.max(1, stepCount), laneLen);
+  const fillLen = Math.min(Math.max(1, length), len);
+  const start = Math.max(0, len - fillLen);
   for (let c = 0; c < out.length; c++) {
     const isKick = c <= 1;
     const isSnare = c >= 2 && c <= 4;
     const isHat = c === 5 || c === 6;
     const isTom = c >= 9 && c <= 11;
     const isPerc = c >= 12 && c <= 14;
-    for (let i = start; i < 32; i++) {
+    for (let i = start; i < len; i++) {
       if (isKick) continue;
       const dens = complexity * amount;
       if (isSnare && chance(0.25 + dens * 0.5)) out[c]![i] = hitStep(0.55 + rand() * 0.4, { ratchet: chance(dens) ? 4 : 1 });

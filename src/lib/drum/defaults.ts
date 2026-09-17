@@ -156,6 +156,7 @@ export const GROOVE_LABELS: Record<string, string> = {
   broken: "Broken Beat",
   brazilian: "Brazilian",
   human: "Human",
+  "neo-soul": "Neo Soul",
 };
 
 export const GENRE_LABELS: Record<string, string> = {
@@ -174,9 +175,10 @@ export const STEP_MODE_LABELS = {
   trigger: "Trigger",
   velocity: "Velocity",
   probability: "Probability",
-  pitch: "Pitch",
-  micro: "Microtime",
   ratchet: "Ratchet",
+  micro: "Micro",
+  length: "Length",
+  pitch: "Pitch",
   filter: "Filter",
-  reverb: "Reverb Send",
+  reverb: "Reverb",
 } as const;
