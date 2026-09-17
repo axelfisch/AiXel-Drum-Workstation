@@ -157,50 +157,97 @@ export function MixerPage({
   const updateChannel = useWorkstation((s) => s.updateChannel);
   const updateMixer = useWorkstation((s) => s.updateMixer);
   const meter = useWorkstation((s) => s.meter);
+  const masterPeak = useWorkstation((s) => s.masterPeak);
   const m = project.mixer;
 
+  const shortName = (name: string) =>
+    name
+      .replace("Closed Hat", "CHH")
+      .replace("Open Hat", "OHH")
+      .replace("Rim / Stick", "Rim")
+      .replace("FX / User", "FX")
+      .replace("Tom High", "Tom Hi")
+      .replace("Tom Mid", "Tom Md")
+      .replace("Tom Low", "Tom Lo");
+
   return (
-    <div className={`flex min-h-0 flex-1 flex-col gap-3 p-3 ${focus ? "overflow-hidden" : "scroll-thin overflow-auto"}`}>
+    <div className={`flex min-h-0 flex-1 flex-col gap-3 p-3 ${focus ? "mixer-focus overflow-hidden" : "scroll-thin overflow-auto"}`}>
       <div className="flex shrink-0 items-center justify-between gap-3 px-1">
         <div className="flex items-baseline gap-3 min-w-0">
           <h2 className="font-display text-lg tracking-[0.12em] uppercase">Mixer</h2>
           <p className="engraved truncate">
-            {project.channels.length} channels
+            {project.channels.length} channels · Rev / Dly / Master
             {focus ? " · Focus" : ""}
           </p>
         </div>
-        {onToggleFocus && (
+        {onToggleFocus && !focus && (
           <button
             type="button"
-            className={`hw-btn ${focus ? "on" : ""}`}
-            title={focus ? "Quitter le mode Focus (Esc)" : "Focus Mixer — voir toutes les voies"}
+            className="hw-btn"
+            title="Focus Mixer — voies pleine largeur"
             onClick={onToggleFocus}
           >
-            {focus ? "Exit Focus" : "Focus"}
+            Focus
           </button>
         )}
       </div>
-      <div className={`flex gap-1 ${focus ? "min-h-0 flex-1 overflow-x-auto overflow-y-hidden" : "min-w-max"}`}>
+
+      <div className={`flex gap-1.5 ${focus ? "min-h-0 flex-1 items-stretch" : "min-w-max"}`}>
         {project.channels.map((ch, i) => (
           <div
             key={ch.id}
-            className={`hw-panel flex flex-col items-center gap-2 rounded-lg p-2 ${focus ? "h-full w-[88px] shrink-0" : "w-[72px]"} ${selected === i ? "border-led/40" : ""}`}
+            className={`hw-panel flex flex-col items-center gap-1.5 rounded-lg p-2 ${
+              focus ? "min-h-0 min-w-0 flex-1" : "w-[76px] shrink-0"
+            } ${selected === i ? "border-led/40" : ""}`}
           >
-            <button type="button" className="font-display w-full truncate text-[10px] tracking-widest text-muted uppercase" onClick={() => select(i)}>
-              {ch.name.replace("Closed Hat", "CHH").replace("Open Hat", "OHH").replace("Rim / Stick", "Rim").replace("FX / User", "FX")}
+            <button
+              type="button"
+              className="font-display w-full truncate text-[10px] tracking-widest text-muted uppercase"
+              onClick={() => select(i)}
+            >
+              {shortName(ch.name)}
             </button>
-            <div className={`meter-bar ${focus ? "min-h-0 flex-1 w-3" : "h-16"}`}>
+            <div className={`meter-bar ${focus ? "min-h-[4rem] w-2.5 flex-1" : "h-16"}`}>
               <i style={{ height: `${Math.min(100, (meter[i] ?? 0) * 100)}%` }} />
             </div>
             <input
-              className={`fader ${focus ? "fader-tall" : ""}`}
+              className={`fader ${focus ? "fader-focus" : ""}`}
               type="range"
               min={0}
               max={1}
               step={0.01}
               value={ch.volume}
+              title="Level"
               onChange={(e) => updateChannel(i, { volume: Number(e.target.value) })}
             />
+            <div className={`flex w-full justify-center gap-1 ${focus ? "mt-1" : ""}`}>
+              <label className="flex flex-col items-center gap-0.5">
+                <span className="text-[8px] tracking-widest text-family-hat uppercase">Rev</span>
+                <input
+                  className="fader fader-send fader-send-rev"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={ch.reverbSend}
+                  title="Reverb send"
+                  onChange={(e) => updateChannel(i, { reverbSend: Number(e.target.value) })}
+                />
+              </label>
+              <label className="flex flex-col items-center gap-0.5">
+                <span className="text-[8px] tracking-widest text-family-perc uppercase">Dly</span>
+                <input
+                  className="fader fader-send fader-send-dly"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={ch.delaySend}
+                  title="Delay send"
+                  onChange={(e) => updateChannel(i, { delaySend: Number(e.target.value) })}
+                />
+              </label>
+            </div>
             <input
               type="range"
               min={-1}
@@ -208,6 +255,7 @@ export function MixerPage({
               step={0.01}
               value={ch.pan}
               className="w-full accent-[var(--color-led)]"
+              title="Pan"
               onChange={(e) => updateChannel(i, { pan: Number(e.target.value) })}
             />
             <div className="flex gap-1">
@@ -218,63 +266,125 @@ export function MixerPage({
                 S
               </button>
             </div>
-            {!focus && (
-              <>
-                <Knob label="Verb" size="sm" value={ch.reverbSend} onChange={(v) => updateChannel(i, { reverbSend: v })} />
-                <Knob label="Dly" size="sm" value={ch.delaySend} onChange={(v) => updateChannel(i, { delaySend: v })} />
-              </>
-            )}
           </div>
         ))}
+
+        {/* Bus returns + Master */}
+        <div
+          className={`hw-panel strip-rev flex flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-hat)_45%,transparent)] p-2 ${
+            focus ? "min-h-0 w-[4.5rem] shrink-0" : "w-[72px] shrink-0"
+          }`}
+        >
+          <p className="font-display text-[10px] tracking-widest text-family-hat uppercase">Rev</p>
+          <p className="engraved text-[8px]">Return</p>
+          <div className={`meter-bar meter-rev ${focus ? "min-h-[4rem] w-2.5 flex-1" : "h-16"}`}>
+            <i style={{ height: `${Math.min(100, m.reverb.return * 70)}%` }} />
+          </div>
+          <input
+            className={`fader fader-send-rev ${focus ? "fader-focus" : ""}`}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={m.reverb.return}
+            title="Reverb return"
+            onChange={(e) => updateMixer({ reverb: { ...m.reverb, return: Number(e.target.value) } })}
+          />
+        </div>
+
+        <div
+          className={`hw-panel strip-dly flex flex-col items-center gap-1.5 rounded-lg border border-[color-mix(in_oklab,var(--color-family-perc)_45%,transparent)] p-2 ${
+            focus ? "min-h-0 w-[4.5rem] shrink-0" : "w-[72px] shrink-0"
+          }`}
+        >
+          <p className="font-display text-[10px] tracking-widest text-family-perc uppercase">Dly</p>
+          <p className="engraved text-[8px]">Return</p>
+          <div className={`meter-bar meter-dly ${focus ? "min-h-[4rem] w-2.5 flex-1" : "h-16"}`}>
+            <i style={{ height: `${Math.min(100, m.delay.return * 70)}%` }} />
+          </div>
+          <input
+            className={`fader fader-send-dly ${focus ? "fader-focus" : ""}`}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={m.delay.return}
+            title="Delay return"
+            onChange={(e) => updateMixer({ delay: { ...m.delay, return: Number(e.target.value) } })}
+          />
+        </div>
+
+        <div
+          className={`hw-panel strip-master flex flex-col items-center gap-1.5 rounded-lg border border-led/50 p-2 ${
+            focus ? "min-h-0 w-[5rem] shrink-0" : "w-[80px] shrink-0"
+          }`}
+        >
+          <p className="font-display text-[10px] tracking-widest text-led uppercase">Master</p>
+          <div className={`meter-bar meter-master ${focus ? "min-h-[4rem] w-3 flex-1" : "h-16"}`}>
+            <i style={{ height: `${Math.min(100, masterPeak * 100)}%` }} />
+          </div>
+          <input
+            className={`fader fader-master ${focus ? "fader-focus" : ""}`}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={m.master.gain}
+            title="Master gain"
+            onChange={(e) => updateMixer({ master: { ...m.master, gain: Number(e.target.value) } })}
+          />
+        </div>
       </div>
+
       {!focus && (
-      <div className="grid gap-3 md:grid-cols-3">
-        <section className="hw-panel hw-panel--screws rounded-xl p-4">
-          <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Reverb Bus</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <Knob label="Size" value={m.reverb.size} onChange={(v) => updateMixer({ reverb: { ...m.reverb, size: v } })} />
-            <Knob label="Decay" value={m.reverb.decay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, decay: v } })} />
-            <Knob label="Pre" value={m.reverb.preDelay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, preDelay: v } })} />
-            <Knob label="Damp" value={m.reverb.damping} onChange={(v) => updateMixer({ reverb: { ...m.reverb, damping: v } })} />
-            <Knob label="Tone" value={m.reverb.tone} onChange={(v) => updateMixer({ reverb: { ...m.reverb, tone: v } })} />
-            <Knob label="Return" value={m.reverb.return} onChange={(v) => updateMixer({ reverb: { ...m.reverb, return: v } })} />
-          </div>
-        </section>
-        <section className="hw-panel hw-panel--screws rounded-xl p-4">
-          <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Delay Bus</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <Knob label="Time" value={m.delay.time} onChange={(v) => updateMixer({ delay: { ...m.delay, time: v } })} />
-            <Knob label="Fdbk" value={m.delay.feedback} onChange={(v) => updateMixer({ delay: { ...m.delay, feedback: v } })} />
-            <Knob label="Filter" value={m.delay.filter} onChange={(v) => updateMixer({ delay: { ...m.delay, filter: v } })} />
-            <Knob label="Width" value={m.delay.width} onChange={(v) => updateMixer({ delay: { ...m.delay, width: v } })} />
-            <Knob label="Return" value={m.delay.return} onChange={(v) => updateMixer({ delay: { ...m.delay, return: v } })} />
-            <label className="flex items-center justify-center gap-2 text-[10px] text-muted">
-              <input
-                type="checkbox"
-                checked={m.delay.sync}
-                onChange={(e) => updateMixer({ delay: { ...m.delay, sync: e.target.checked } })}
-              />
-              Sync
-            </label>
-          </div>
-        </section>
-        <section className="hw-panel hw-panel--screws rounded-xl p-4">
-          <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Master</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <Knob label="Low" value={m.master.eqLow} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqLow: v } })} />
-            <Knob label="Mid" value={m.master.eqMid} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqMid: v } })} />
-            <Knob label="High" value={m.master.eqHigh} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqHigh: v } })} />
-            <Knob label="Punch" value={m.master.punch} onChange={(v) => updateMixer({ master: { ...m.master, punch: v } })} />
-            <Knob label="Tape" value={m.master.tape} onChange={(v) => updateMixer({ master: { ...m.master, tape: v } })} />
-            <Knob label="Limit" value={m.master.limiter} onChange={(v) => updateMixer({ master: { ...m.master, limiter: v } })} />
-            <Knob label="Gain" value={m.master.gain} onChange={(v) => updateMixer({ master: { ...m.master, gain: v } })} />
-          </div>
-        </section>
-      </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <section className="hw-panel hw-panel--screws rounded-xl p-4">
+            <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Reverb Bus</h3>
+            <div className="grid grid-cols-3 gap-2">
+              <Knob label="Size" value={m.reverb.size} onChange={(v) => updateMixer({ reverb: { ...m.reverb, size: v } })} />
+              <Knob label="Decay" value={m.reverb.decay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, decay: v } })} />
+              <Knob label="Pre" value={m.reverb.preDelay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, preDelay: v } })} />
+              <Knob label="Damp" value={m.reverb.damping} onChange={(v) => updateMixer({ reverb: { ...m.reverb, damping: v } })} />
+              <Knob label="Tone" value={m.reverb.tone} onChange={(v) => updateMixer({ reverb: { ...m.reverb, tone: v } })} />
+              <Knob label="Return" value={m.reverb.return} onChange={(v) => updateMixer({ reverb: { ...m.reverb, return: v } })} />
+            </div>
+          </section>
+          <section className="hw-panel hw-panel--screws rounded-xl p-4">
+            <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Delay Bus</h3>
+            <div className="grid grid-cols-3 gap-2">
+              <Knob label="Time" value={m.delay.time} onChange={(v) => updateMixer({ delay: { ...m.delay, time: v } })} />
+              <Knob label="Fdbk" value={m.delay.feedback} onChange={(v) => updateMixer({ delay: { ...m.delay, feedback: v } })} />
+              <Knob label="Filter" value={m.delay.filter} onChange={(v) => updateMixer({ delay: { ...m.delay, filter: v } })} />
+              <Knob label="Width" value={m.delay.width} onChange={(v) => updateMixer({ delay: { ...m.delay, width: v } })} />
+              <Knob label="Return" value={m.delay.return} onChange={(v) => updateMixer({ delay: { ...m.delay, return: v } })} />
+              <label className="flex items-center justify-center gap-2 text-[10px] text-muted">
+                <input
+                  type="checkbox"
+                  checked={m.delay.sync}
+                  onChange={(e) => updateMixer({ delay: { ...m.delay, sync: e.target.checked } })}
+                />
+                Sync
+              </label>
+            </div>
+          </section>
+          <section className="hw-panel hw-panel--screws rounded-xl p-4">
+            <h3 className="font-display mb-3 text-xs tracking-[0.2em] text-muted uppercase">Master</h3>
+            <div className="grid grid-cols-3 gap-2">
+              <Knob label="Low" value={m.master.eqLow} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqLow: v } })} />
+              <Knob label="Mid" value={m.master.eqMid} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqMid: v } })} />
+              <Knob label="High" value={m.master.eqHigh} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqHigh: v } })} />
+              <Knob label="Punch" value={m.master.punch} onChange={(v) => updateMixer({ master: { ...m.master, punch: v } })} />
+              <Knob label="Tape" value={m.master.tape} onChange={(v) => updateMixer({ master: { ...m.master, tape: v } })} />
+              <Knob label="Limit" value={m.master.limiter} onChange={(v) => updateMixer({ master: { ...m.master, limiter: v } })} />
+              <Knob label="Gain" value={m.master.gain} onChange={(v) => updateMixer({ master: { ...m.master, gain: v } })} />
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );
 }
+
 
 export function SongPage() {
   const project = useWorkstation((s) => s.project);

@@ -400,8 +400,47 @@ select.hw-select {
   min-height: 0;
 }
 
-.fader-tall {
-  height: 140px;
-  writing-mode: vertical-lr;
-  direction: rtl;
+
+/* Mixer focus — fill width, taller faders, colored bus strips */
+.mixer-focus .fader-focus {
+  height: min(28vh, 180px);
+  width: 10px;
+}
+.fader-send {
+  height: 56px;
+  width: 6px;
+}
+.mixer-focus .fader-send {
+  height: min(12vh, 88px);
+}
+.fader-send-rev::-webkit-slider-thumb,
+.fader-send-rev::-moz-range-thumb {
+  background: linear-gradient(180deg, #9eb6c4, #4a6573);
+  border-color: #7d93a3;
+}
+.fader-send-dly::-webkit-slider-thumb,
+.fader-send-dly::-moz-range-thumb {
+  background: linear-gradient(180deg, #b5c49a, #5a6e48);
+  border-color: #7a9170;
+}
+.fader-master {
+  width: 12px;
+}
+.fader-master::-webkit-slider-thumb,
+.fader-master::-moz-range-thumb {
+  background: linear-gradient(180deg, #f0c27a, #c4842a);
+  border-color: var(--color-led);
+  box-shadow: 0 0 10px rgba(240, 169, 74, 0.45);
+}
+.meter-rev > i { background: var(--color-family-hat); }
+.meter-dly > i { background: var(--color-family-perc); }
+.meter-master > i { background: var(--color-led); box-shadow: 0 0 8px rgba(240, 169, 74, 0.5); }
+.strip-master {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-led) 12%, #171a1f), #121418);
+}
+.strip-rev {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-family-hat) 10%, #171a1f), #121418);
+}
+.strip-dly {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--color-family-perc) 10%, #171a1f), #121418);
 }
