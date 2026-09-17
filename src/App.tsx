@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
 import { audioEngine } from "@/engine/audio-engine";
 import { Workstation } from "@/components/workstation/Workstation";
 
-export const Route = createFileRoute("/")({ component: Home });
-
-function Home() {
+export default function App() {
   const [booted, setBooted] = useState(false);
   const [client, setClient] = useState(false);
 
@@ -45,11 +42,12 @@ function Splash({ onArm, pending }: { onArm: () => void; pending?: boolean }) {
         type="button"
         disabled={pending}
         onClick={onArm}
-        className="mt-8 rounded-lg bg-fg px-8 py-3 font-display text-sm tracking-[0.22em] text-bg uppercase"
+        className="mt-8 rounded-lg bg-fg px-8 py-3 font-display text-sm tracking-[0.22em] text-bg uppercase disabled:opacity-40"
       >
         Arm Engine
       </button>
       <p className="mt-6 text-[11px] tracking-widest text-subtle uppercase">Play · Stop · Pads 1–8 / Q–I</p>
+      <p className="mt-3 text-[10px] tracking-widest text-subtle uppercase">Web V1 · VST3/AU port planned</p>
     </main>
   );
 }
