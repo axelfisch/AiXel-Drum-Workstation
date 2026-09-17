@@ -417,6 +417,12 @@ select.hw-select {
 }
 .seq-focus-panel .step-cell {
   min-height: 0;
+  height: 100%;
+}
+.seq-focus-panel .lane-label {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
 }
 
 
@@ -523,18 +529,20 @@ select.hw-select {
 }
 .focus-window__bar {
   display: flex;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid color-mix(in oklab, var(--color-panel-border) 80%, transparent);
   background: color-mix(in oklab, #0d0f12 70%, transparent);
 }
-.focus-window > .mixer-focus-same,
-.focus-window > div {
+.focus-window > :not(.focus-window__bar) {
+  display: flex;
   min-height: 0;
   flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .focus-window--seq {
@@ -554,7 +562,7 @@ select.hw-select {
   flex: 1 1 auto;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.5rem;
+  padding: 0.25rem 0.4rem 0.4rem;
 }
 .focus-window__body > * {
   min-height: 0;

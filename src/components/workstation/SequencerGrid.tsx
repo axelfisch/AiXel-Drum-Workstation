@@ -79,7 +79,7 @@ export function SequencerGrid({
   }, [stepFloat, playing, n, visibleStart, visibleCount]);
 
   return (
-    <div className={`hw-panel flex min-h-0 flex-1 flex-col ${focus ? "seq-focus-panel gap-1 p-1.5" : "gap-2 p-3"}`}>
+    <div className={`hw-panel flex min-h-0 flex-1 flex-col ${focus ? "seq-focus-panel gap-0 p-0" : "gap-2 p-3"}`}>
       {!focus && (
         <div className="flex items-center justify-between gap-3 px-1">
           <div className="flex items-baseline gap-3 min-w-0">
@@ -173,7 +173,7 @@ export function SequencerGrid({
             ))}
           </div>
           <div
-            className="pointer-events-none absolute top-[1.1rem] right-0 bottom-0 left-[7.5rem]"
+            className={`pointer-events-none absolute right-0 bottom-0 left-[7.5rem] ${focus ? "top-4" : "top-[1.1rem]"}`}
             aria-hidden
           >
             <div ref={playhead} className="playhead" />
@@ -228,7 +228,7 @@ function Lane({
   const muteCh = useWorkstation((s) => s.updateChannel);
   return (
     <>
-      <div className={cn("flex items-center gap-1.5 pr-2", selected && "bg-surface-3/80")}>
+      <div className={cn("lane-label flex h-full min-h-0 items-center gap-1.5 pr-2", selected && "bg-surface-3/80")}>
         <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: FAMILY_VAR[family] }} />
           <span className="font-display truncate text-[12px] font-semibold uppercase tracking-[0.12em] text-fg">
