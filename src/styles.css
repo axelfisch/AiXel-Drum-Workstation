@@ -1,24 +1,28 @@
 @import "tailwindcss";
 
+/* AiXel Drum Workstation — "Classic Hardware" restyle.
+   Visual layer only: same tokens, same class names, no behaviour touched. */
+
 @theme {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Barlow Condensed", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Barlow Condensed", "IBM Plex Sans", sans-serif;
+  --font-serif: "Cormorant Garamond", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --color-bg: #0c0d0f;
-  --color-surface: #14161a;
-  --color-surface-2: #1b1e24;
-  --color-surface-3: #232830;
-  --color-fg: #e8e6e1;
-  --color-muted: #8b8e96;
-  --color-subtle: #5c6068;
-  --color-border: #2a2e35;
-  --color-border-strong: #3d434c;
-  --color-led: #e8a45a;
-  --color-led-dim: #4a3420;
-  --color-play: #d7c4a0;
-  --color-danger: #c45c4a;
-  --color-ok: #6a9a72;
+  --color-bg: #08080a;
+  --color-surface: #16161a;
+  --color-surface-2: #1c1c21;
+  --color-surface-3: #26262c;
+  --color-fg: #ece5d8;
+  --color-muted: #948f86;
+  --color-subtle: #6f6b64;
+  --color-border: #26262a;
+  --color-border-strong: #45454c;
+  --color-led: #f0a94a;
+  --color-led-dim: #3a3226;
+  --color-play: #e4ddd0;
+  --color-danger: #c4674a;
+  --color-ok: #7d9a72;
   --color-family-kick: #c4845a;
   --color-family-snare: #c8bba8;
   --color-family-hat: #7d93a3;
@@ -26,13 +30,14 @@
   --color-family-perc: #7a9170;
   --color-family-fx: #8a8f96;
 
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 9px;
   --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-xl: 18px;
 
-  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 -1px 0 rgba(0, 0, 0, 0.5) inset,
+    0 16px 34px rgba(0, 0, 0, 0.5);
 }
 
 @layer base {
@@ -44,8 +49,12 @@
   body,
   #app {
     min-height: 100%;
-    background: var(--color-bg);
     color: var(--color-fg);
+    background: var(--color-bg);
+  }
+  body {
+    background-image: radial-gradient(120% 90% at 50% -10%, #17171a 0%, #0b0b0d 55%, #070708 100%);
+    background-attachment: fixed;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -53,6 +62,13 @@
   }
   * {
     box-sizing: border-box;
+  }
+  a {
+    color: var(--color-fg);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--color-led);
   }
 }
 
@@ -63,45 +79,73 @@
   }
 }
 
+/* --- Type: engraved condensed labels, serif for headings and the wordmark --- */
+.font-display.text-lg,
+.font-display.text-xl,
+.font-display.text-2xl,
+.font-display.text-3xl {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.font-display.tracking-\[0\.28em\] {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-fg);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+}
+.font-display.uppercase {
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* --- Milled faceplate panels --- */
 .hw-panel {
-  background: linear-gradient(180deg, #171a1f 0%, #121418 100%);
-  border: 1px solid var(--color-border);
+  background-color: #16161a;
+  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #202023 0%, #16161a 44%, #101012 100%);
+  border: 1px solid #2b2b2e;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-panel);
 }
 
 .led-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: var(--color-led-dim);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
 }
 .led-dot.on {
   background: var(--color-led);
-  box-shadow: 0 0 8px rgba(232, 164, 90, 0.75);
+  box-shadow: 0 0 10px rgba(240, 169, 74, 0.8);
 }
 
+/* --- Sequencer steps: unlit wells, lit amber lamps --- */
 .step-cell {
   position: relative;
   border-radius: 3px;
-  background: #101216;
-  border: 1px solid #262b32;
-  min-height: 22px;
+  background: #0e0e11;
+  border: 1px solid #212127;
+  min-height: 24px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 .step-cell.beat {
-  background: #14181e;
-  border-color: #30363e;
+  background: #151519;
+  border-color: #2e2e34;
 }
 .step-cell.bar {
-  border-color: #3a414b;
+  border-color: #3a3a42;
 }
 .step-cell.on {
-  background: color-mix(in oklab, var(--lane, var(--color-led)) 72%, #1a140e);
-  border-color: color-mix(in oklab, var(--lane, var(--color-led)) 55%, #2a241c);
-  box-shadow: 0 0 10px color-mix(in oklab, var(--lane, var(--color-led)) 28%, transparent);
+  background: color-mix(in oklab, var(--lane, var(--color-led)) 82%, #1a140c);
+  border-color: color-mix(in oklab, var(--lane, var(--color-led)) 70%, #2a241c);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--lane, var(--color-led)) 38%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 .step-cell:hover {
-  border-color: #4a5160;
+  border-color: #55555e;
 }
 .step-cell .vel {
   position: absolute;
@@ -119,15 +163,16 @@
   bottom: 0;
   width: 2px;
   background: var(--color-play);
-  box-shadow: 0 0 10px rgba(215, 196, 160, 0.55);
+  box-shadow: 0 0 12px rgba(228, 221, 208, 0.6);
   pointer-events: none;
   z-index: 3;
 }
 
 .meter-bar {
-  width: 5px;
-  border-radius: 2px;
-  background: #1a1d22;
+  width: 6px;
+  border-radius: 3px;
+  background: #0a0a0c;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
   overflow: hidden;
   position: relative;
 }
@@ -136,56 +181,69 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, var(--color-led), #8a6a3a);
+  background: linear-gradient(180deg, var(--color-led), #6d5128);
 }
 
+/* --- Knobs: turned metal, brass pointer --- */
 .knob {
   touch-action: none;
   user-select: none;
 }
 .knob-dial {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 35% 30%, #3a4048, #1a1d22 62%);
-  border: 1px solid #3a4048;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.4);
+    repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.028) 0deg 1.2deg, transparent 1.2deg 3deg),
+    radial-gradient(circle at 50% 26%, #333338 0%, #1d1d21 52%, #111113 100%);
+  border: 1px solid #3a3a3f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 -8px 14px rgba(0, 0, 0, 0.55),
+    0 5px 12px rgba(0, 0, 0, 0.6);
   position: relative;
 }
 .knob-dial::after {
   content: "";
   position: absolute;
   left: 50%;
-  top: 4px;
+  top: 5px;
   width: 2px;
-  height: 10px;
+  height: 11px;
   margin-left: -1px;
   background: var(--color-led);
   border-radius: 1px;
-  box-shadow: 0 0 6px rgba(232, 164, 90, 0.5);
+  box-shadow: 0 0 7px rgba(240, 169, 74, 0.6);
 }
 
+/* --- Faders: recessed slot, milled cap --- */
 .fader {
   writing-mode: vertical-lr;
   direction: rtl;
   appearance: none;
-  width: 8px;
-  height: 110px;
-  background: #0e1013;
+  width: 9px;
+  height: 118px;
+  background: #0a0a0c;
   border-radius: 4px;
-  border: 1px solid #2a2e35;
+  border: 1px solid #26262a;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.85);
 }
 .fader::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 22px;
+  width: 18px;
+  height: 24px;
   border-radius: 3px;
-  background: linear-gradient(#3a4048, #232830);
-  border: 1px solid #5a616c;
+  background: linear-gradient(180deg, #3b3b41, #1e1e22);
+  border: 1px solid #4b4b52;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.fader::-moz-range-thumb {
+  width: 18px;
+  height: 24px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #3b3b41, #1e1e22);
+  border: 1px solid #4b4b52;
 }
 
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: #3a4048 transparent;
+  scrollbar-color: #2c2c30 transparent;
 }
