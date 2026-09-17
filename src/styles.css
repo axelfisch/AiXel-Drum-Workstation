@@ -393,9 +393,7 @@ select.hw-select {
 
 
 /* Focus Sequencer — fit all 16 lanes without scrolling the grid */
-.seq-focus-root .seq-focus-panel {
-  min-height: 0;
-}
+.seq-focus-panel { min-height: 0; height: 100%; }
 .seq-focus-panel .step-cell {
   min-height: 0;
 }
@@ -480,7 +478,7 @@ select.hw-select {
 }
 
 /* Focus Mixer — same content as normal, in a slightly shorter floating window */
-.mixer-focus-stage {
+.focus-stage {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -491,7 +489,7 @@ select.hw-select {
   background: color-mix(in oklab, #050607 55%, transparent);
   backdrop-filter: blur(2px);
 }
-.mixer-focus-window {
+.focus-window {
   display: flex;
   flex-direction: column;
   width: min(1180px, 96vw);
@@ -505,7 +503,7 @@ select.hw-select {
     0 24px 80px rgba(0, 0, 0, 0.55),
     0 0 0 1px color-mix(in oklab, #fff 4%, transparent);
 }
-.mixer-focus-window__bar {
+.focus-window__bar {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -515,9 +513,53 @@ select.hw-select {
   border-bottom: 1px solid color-mix(in oklab, var(--color-panel-border) 80%, transparent);
   background: color-mix(in oklab, #0d0f12 70%, transparent);
 }
-.mixer-focus-window > .mixer-focus-same,
-.mixer-focus-window > div {
+.focus-window > .mixer-focus-same,
+.focus-window > div {
   min-height: 0;
   flex: 1 1 auto;
+}
+
+.focus-window--seq {
+  width: min(1280px, 97vw);
+  height: min(82dvh, 900px);
+}
+.focus-window--mixer {
+  width: min(1180px, 96vw);
+  height: min(78dvh, 860px);
+}
+.focus-window__body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+.focus-window__body > * {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+/* Compact mixer bus panels — one dense row of knobs, no empty cells */
+.mixer-bus .knob {
+  gap: 0.15rem;
+}
+.mixer-bus .knob span:last-child {
+  display: none;
+}
+.mixer-bus .knob-dial--sm {
+  width: 26px;
+  height: 26px;
+}
+.mixer-bus .bus-sync {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.1rem;
+  align-self: start;
+  justify-self: center;
+  font-size: 0.85rem;
+}
+.mixer-bus-panels {
+  min-height: 0;
 }
 

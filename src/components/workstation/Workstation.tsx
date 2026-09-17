@@ -119,8 +119,8 @@ export function Workstation() {
   const [focusMode, setFocusMode] = useState<null | "sequencer" | "mixer">(null);
   const seqFocused = focusMode === "sequencer";
   const mixerFocused = focusMode === "mixer";
-  /** Sequencer still takes over the shell; mixer uses a floating window. */
-  const focused = seqFocused;
+  /** Both Focus modes use a floating window — keep the main chrome visible underneath. */
+  const focused = false;
 
   useEffect(() => {
     if (focusMode == null) return;
@@ -151,18 +151,6 @@ export function Workstation() {
           onHumanize={setHumanize}
           onPlay={togglePlay}
           onStop={stop}
-        />
-      )}
-      {seqFocused && (
-        <FocusTransport
-          tempo={project.tempo}
-          playing={playing}
-          patternIndex={project.patternIndex}
-          onTempo={setTempo}
-          onPlay={togglePlay}
-          onStop={stop}
-          onExit={() => setFocusMode(null)}
-          label="Focus Sequencer"
         />
       )}
       {!focused && (
@@ -198,12 +186,45 @@ export function Workstation() {
         </nav>
       )}
       {page === "sequencer" && (
-        <div className={`flex min-h-0 flex-1 ${focused ? "flex-col" : "flex-col lg:flex-row"}`}>
-          <div className={`flex min-h-0 min-w-0 flex-1 flex-col p-3 ${focused ? "pt-2" : "pt-0"}`}>
-            <SequencerGrid focus={focusMode === "sequencer"} onToggleFocus={() => setFocusMode((m) => (m === "sequencer" ? null : "sequencer"))} />
-            {!focused && <StepEditor mode={stepMode} />}
+        <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col p-3 pt-0">
+            <SequencerGrid
+              focus={false}
+              onToggleFocus={() => setFocusMode((m) => (m === "sequencer" ? null : "sequencer"))}
+            />
+            <StepEditor mode={stepMode} />
           </div>
-          {!focused && <Inspector />}
+          <Inspector />
+          {seqFocused && (
+            <div
+              className="focus-stage"
+              role="dialog"
+              aria-label="Focus Sequencer"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setFocusMode(null);
+              }}
+            >
+              <div className="focus-window focus-window--seq">
+                <div className="focus-window__bar">
+                  <p className="font-display text-sm tracking-[0.18em] uppercase text-led">Focus Sequencer</p>
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="hw-btn" onClick={togglePlay} title="Space">
+                      {playing ? "Pause" : "Play"}
+                    </button>
+                    <button type="button" className="hw-btn" onClick={stop}>
+                      Stop
+                    </button>
+                    <button type="button" className="hw-btn on" onClick={() => setFocusMode(null)} title="Esc">
+                      Exit Focus
+                    </button>
+                  </div>
+                </div>
+                <div className="focus-window__body">
+                  <SequencerGrid focus />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       {page === "sound" && (
@@ -219,15 +240,15 @@ export function Workstation() {
           />
           {mixerFocused && (
             <div
-              className="mixer-focus-stage"
+              className="focus-stage"
               role="dialog"
               aria-label="Focus Mixer"
               onMouseDown={(e) => {
                 if (e.target === e.currentTarget) setFocusMode(null);
               }}
             >
-              <div className="mixer-focus-window">
-                <div className="mixer-focus-window__bar">
+              <div className="focus-window focus-window--mixer">
+                <div className="focus-window__bar">
                   <p className="font-display text-sm tracking-[0.18em] uppercase text-led">Focus Mixer</p>
                   <div className="flex items-center gap-2">
                     <button type="button" className="hw-btn" onClick={togglePlay} title="Space">

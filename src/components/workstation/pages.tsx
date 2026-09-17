@@ -182,54 +182,55 @@ export function MixerPage({
     </button>
   );
 
-  // Same layout in Focus and normal — only the surrounding window changes.
+  // Compact bus panels (same in Focus + normal) — dense, no empty holes
   const busPanels = (
-    <div className="grid shrink-0 gap-3 md:grid-cols-3">
-      <section className="hw-panel hw-panel--screws strip-rev rounded-xl p-3">
-        <h3 className="font-display mb-2 text-xs tracking-[0.2em] text-family-hat uppercase">Reverb Bus</h3>
-        <div className="grid grid-cols-3 gap-2">
-          <Knob label="Size" value={m.reverb.size} onChange={(v) => updateMixer({ reverb: { ...m.reverb, size: v } })} />
-          <Knob label="Return" value={m.reverb.return} onChange={(v) => updateMixer({ reverb: { ...m.reverb, return: v } })} />
-          <Knob label="Decay" value={m.reverb.decay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, decay: v } })} />
-          <Knob label="Pre" value={m.reverb.preDelay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, preDelay: v } })} />
-          <Knob label="Damp" value={m.reverb.damping} onChange={(v) => updateMixer({ reverb: { ...m.reverb, damping: v } })} />
-          <Knob label="Tone" value={m.reverb.tone} onChange={(v) => updateMixer({ reverb: { ...m.reverb, tone: v } })} />
+    <div className="mixer-bus-panels grid shrink-0 gap-2 md:grid-cols-3">
+      <section className="hw-panel hw-panel--screws strip-rev mixer-bus rounded-xl p-2">
+        <h3 className="font-display mb-1 text-[10px] tracking-[0.2em] text-family-hat uppercase">Reverb</h3>
+        <div className="grid grid-cols-6 gap-1 sm:grid-cols-6">
+          <Knob label="Size" size="sm" value={m.reverb.size} onChange={(v) => updateMixer({ reverb: { ...m.reverb, size: v } })} />
+          <Knob label="Return" size="sm" value={m.reverb.return} onChange={(v) => updateMixer({ reverb: { ...m.reverb, return: v } })} />
+          <Knob label="Decay" size="sm" value={m.reverb.decay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, decay: v } })} />
+          <Knob label="Pre" size="sm" value={m.reverb.preDelay} onChange={(v) => updateMixer({ reverb: { ...m.reverb, preDelay: v } })} />
+          <Knob label="Damp" size="sm" value={m.reverb.damping} onChange={(v) => updateMixer({ reverb: { ...m.reverb, damping: v } })} />
+          <Knob label="Tone" size="sm" value={m.reverb.tone} onChange={(v) => updateMixer({ reverb: { ...m.reverb, tone: v } })} />
         </div>
       </section>
-      <section className="hw-panel hw-panel--screws strip-dly rounded-xl p-3">
-        <h3 className="font-display mb-2 text-xs tracking-[0.2em] text-family-perc uppercase">Delay Bus</h3>
-        <div className="grid grid-cols-3 gap-2">
-          <Knob label="Time" value={m.delay.time} onChange={(v) => updateMixer({ delay: { ...m.delay, time: v } })} />
-          <Knob label="Return" value={m.delay.return} onChange={(v) => updateMixer({ delay: { ...m.delay, return: v } })} />
-          <Knob label="Fdbk" value={m.delay.feedback} onChange={(v) => updateMixer({ delay: { ...m.delay, feedback: v } })} />
-          <Knob label="Filter" value={m.delay.filter} onChange={(v) => updateMixer({ delay: { ...m.delay, filter: v } })} />
-          <Knob label="Width" value={m.delay.width} onChange={(v) => updateMixer({ delay: { ...m.delay, width: v } })} />
-          <label className="flex items-center justify-center gap-2 text-[10px] text-muted">
-            <input
-              type="checkbox"
-              checked={m.delay.sync}
-              onChange={(e) => updateMixer({ delay: { ...m.delay, sync: e.target.checked } })}
-            />
-            Sync
-          </label>
+      <section className="hw-panel hw-panel--screws strip-dly mixer-bus rounded-xl p-2">
+        <h3 className="font-display mb-1 text-[10px] tracking-[0.2em] text-family-perc uppercase">Delay</h3>
+        <div className="grid grid-cols-6 gap-1">
+          <Knob label="Time" size="sm" value={m.delay.time} onChange={(v) => updateMixer({ delay: { ...m.delay, time: v } })} />
+          <Knob label="Return" size="sm" value={m.delay.return} onChange={(v) => updateMixer({ delay: { ...m.delay, return: v } })} />
+          <Knob label="Fdbk" size="sm" value={m.delay.feedback} onChange={(v) => updateMixer({ delay: { ...m.delay, feedback: v } })} />
+          <Knob label="Filter" size="sm" value={m.delay.filter} onChange={(v) => updateMixer({ delay: { ...m.delay, filter: v } })} />
+          <Knob label="Width" size="sm" value={m.delay.width} onChange={(v) => updateMixer({ delay: { ...m.delay, width: v } })} />
+          <button
+            type="button"
+            className={`ms-btn bus-sync ${m.delay.sync ? "on solo-on" : ""}`}
+            title="Tempo sync"
+            aria-pressed={m.delay.sync}
+            onClick={() => updateMixer({ delay: { ...m.delay, sync: !m.delay.sync } })}
+          >
+            ⟳
+          </button>
         </div>
       </section>
-      <section className="hw-panel hw-panel--screws strip-master rounded-xl p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="font-display text-xs tracking-[0.2em] text-led uppercase">Master</h3>
+      <section className="hw-panel hw-panel--screws strip-master mixer-bus rounded-xl p-2">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h3 className="font-display text-[10px] tracking-[0.2em] text-led uppercase">Master</h3>
           <div className="flex gap-1">
             {msBtn(!!m.master.mute, "mute", () => updateMixer({ master: { ...m.master, mute: !m.master.mute } }), "M")}
             {msBtn(!!m.master.solo, "solo", () => updateMixer({ master: { ...m.master, solo: !m.master.solo } }), "S")}
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <Knob label="Limit" value={m.master.limiter} onChange={(v) => updateMixer({ master: { ...m.master, limiter: v } })} />
-          <Knob label="Gain" value={m.master.gain} onChange={(v) => updateMixer({ master: { ...m.master, gain: v } })} />
-          <Knob label="Low" value={m.master.eqLow} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqLow: v } })} />
-          <Knob label="Mid" value={m.master.eqMid} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqMid: v } })} />
-          <Knob label="High" value={m.master.eqHigh} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqHigh: v } })} />
-          <Knob label="Punch" value={m.master.punch} onChange={(v) => updateMixer({ master: { ...m.master, punch: v } })} />
-          <Knob label="Tape" value={m.master.tape} onChange={(v) => updateMixer({ master: { ...m.master, tape: v } })} />
+        <div className="grid grid-cols-7 gap-1">
+          <Knob label="Limit" size="sm" value={m.master.limiter} onChange={(v) => updateMixer({ master: { ...m.master, limiter: v } })} />
+          <Knob label="Gain" size="sm" value={m.master.gain} onChange={(v) => updateMixer({ master: { ...m.master, gain: v } })} />
+          <Knob label="Low" size="sm" value={m.master.eqLow} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqLow: v } })} />
+          <Knob label="Mid" size="sm" value={m.master.eqMid} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqMid: v } })} />
+          <Knob label="High" size="sm" value={m.master.eqHigh} min={-0.5} max={0.5} onChange={(v) => updateMixer({ master: { ...m.master, eqHigh: v } })} />
+          <Knob label="Punch" size="sm" value={m.master.punch} onChange={(v) => updateMixer({ master: { ...m.master, punch: v } })} />
+          <Knob label="Tape" size="sm" value={m.master.tape} onChange={(v) => updateMixer({ master: { ...m.master, tape: v } })} />
         </div>
       </section>
     </div>
