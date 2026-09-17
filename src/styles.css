@@ -458,10 +458,59 @@ select.hw-select {
   height: 28px;
 }
 
+.ms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border-radius: 0.3rem;
+  border: 1px solid color-mix(in oklab, var(--color-panel-border) 80%, transparent);
+  background: color-mix(in oklab, #0d0f12 70%, transparent);
+  color: var(--color-muted);
+  font-family: var(--font-display, ui-sans-serif);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: pointer;
+}
+.ms-btn:hover {
+  border-color: color-mix(in oklab, var(--color-led) 35%, transparent);
+  color: var(--color-fg, #e8eaed);
+}
+.ms-btn.on.mute-on {
+  color: var(--color-danger);
+  border-color: color-mix(in oklab, var(--color-danger) 55%, transparent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--color-danger) 25%, transparent);
+}
+.ms-btn.on.solo-on {
+  color: var(--color-led);
+  border-color: color-mix(in oklab, var(--color-led) 55%, transparent);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--color-led) 25%, transparent);
+}
+.mixer-focus {
+  overflow: hidden;
+}
+.mixer-focus .mixer-bus-panels {
+  flex: 0 0 auto;
+  min-height: 7.5rem;
+}
 .mixer-focus .meter-focus {
   flex: 0 0 auto;
 }
 .mixer-focus .fader-focus {
-  height: min(18vh, 120px);
+  height: min(14vh, 96px);
   width: 10px;
+  flex: 1 1 auto;
+  min-height: 48px;
+  max-height: 110px;
+}
+.mixer-focus .knob-dial--sm {
+  width: 26px;
+  height: 26px;
+}
+.mixer-focus .knob span:last-child {
+  display: none;
 }
