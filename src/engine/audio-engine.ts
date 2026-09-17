@@ -196,7 +196,8 @@ export class AudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const r = mixer.reverb;
-    this.reverbSend.gain.setTargetAtTime(r.return * 0.9, now, 0.03);
+    const m = mixer.master;
+    const drySolo = !!m.solo;
     this.reverbPre.delayTime.setTargetAtTime(0.004 + r.preDelay * 0.08, now, 0.03);
     const key = `${r.size.toFixed(2)}:${r.decay.toFixed(2)}:${r.damping.toFixed(2)}`;
     if (key !== this.irKey) {
@@ -212,9 +213,9 @@ export class AudioEngine {
     const d = mixer.delay;
     this.delayFb.gain.setTargetAtTime(d.feedback, now, 0.03);
     this.delayFilter.frequency.setTargetAtTime(800 + d.filter * 9000, now, 0.03);
-    this.delaySend.gain.setTargetAtTime(d.return * 0.8, now, 0.03);
-    const m = mixer.master;
-    this.output.gain.setTargetAtTime(0.4 + m.gain * 0.7, now, 0.03);
+    this.reverbSend.gain.setTargetAtTime(m.mute || drySolo ? 0 : r.return * 0.9, now, 0.03);
+    this.delaySend.gain.setTargetAtTime(m.mute || drySolo ? 0 : d.return * 0.8, now, 0.03);
+    this.output.gain.setTargetAtTime(m.mute ? 0 : 0.4 + m.gain * 0.7, now, 0.03);
     this.masterEqLow.gain.setTargetAtTime(m.eqLow * 14, now, 0.04);
     this.masterEqMid.gain.setTargetAtTime(m.eqMid * 10, now, 0.04);
     this.masterEqHigh.gain.setTargetAtTime(m.eqHigh * 12, now, 0.04);

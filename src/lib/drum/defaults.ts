@@ -114,6 +114,8 @@ export function defaultMixer(): MixerBus {
       clip: 0.4,
       limiter: 0.7,
       gain: 0.82,
+      mute: false,
+      solo: false,
     },
   };
 }

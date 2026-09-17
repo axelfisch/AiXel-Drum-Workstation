@@ -457,3 +457,11 @@ select.hw-select {
   width: 28px;
   height: 28px;
 }
+
+.mixer-focus .meter-focus {
+  flex: 0 0 auto;
+}
+.mixer-focus .fader-focus {
+  height: min(18vh, 120px);
+  width: 10px;
+}

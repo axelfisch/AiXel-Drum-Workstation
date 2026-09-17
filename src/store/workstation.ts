@@ -8,6 +8,20 @@ import { applyProjectRouting, audioEngine } from "@/engine/audio-engine";
 import { SequencerEngine } from "@/engine/sequencer";
 
 const STORAGE_KEY = "aixel-drum-project-v1";
+
+function ensureMixer(m: Project["mixer"]): Project["mixer"] {
+  return {
+    ...m,
+    reverb: { ...m.reverb },
+    delay: { ...m.delay },
+    master: {
+      ...m.master,
+      mute: m.master.mute ?? false,
+      solo: m.master.solo ?? false,
+    },
+  };
+}
+
 const PRESETS_KEY = "aixel-drum-presets-v1";
 
 export type SavedPreset = { id: string; name: string; kind: "project" | "kit" | "pattern"; at: number; data: unknown };
@@ -441,7 +455,13 @@ export const useWorkstation = create<WS & Actions>((set, get) => {
     },
     updateMixer: (patch) => {
       const project = snapshot(get().project);
-      project.mixer = typeof patch === "function" ? patch(project.mixer) : { ...project.mixer, ...patch };
+      const next = typeof patch === "function" ? patch(project.mixer) : { ...project.mixer, ...patch };
+      project.mixer = ensureMixer({
+        ...next,
+        reverb: { ...project.mixer.reverb, ...(next.reverb || {}) },
+        delay: { ...project.mixer.delay, ...(next.delay || {}) },
+        master: { ...project.mixer.master, ...(next.master || {}) },
+      });
       set({ project });
       route();
     },

@@ -198,6 +198,8 @@ export interface MixerBus {
     clip: number;
     limiter: number;
     gain: number;
+    mute: boolean;
+    solo: boolean;
   };
 }
 
