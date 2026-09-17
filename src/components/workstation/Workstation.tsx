@@ -117,16 +117,19 @@ export function Workstation() {
 
   const kit = KIT_BY_ID[project.kitId];
   const [focusMode, setFocusMode] = useState<null | "sequencer" | "mixer">(null);
-  const focused = focusMode != null;
+  const seqFocused = focusMode === "sequencer";
+  const mixerFocused = focusMode === "mixer";
+  /** Sequencer still takes over the shell; mixer uses a floating window. */
+  const focused = seqFocused;
 
   useEffect(() => {
-    if (!focused) return;
+    if (focusMode == null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setFocusMode(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focused]);
+  }, [focusMode]);
 
   useEffect(() => {
     if (focusMode === "sequencer" && page !== "sequencer") setFocusMode(null);
@@ -150,7 +153,7 @@ export function Workstation() {
           onStop={stop}
         />
       )}
-      {focused && (
+      {seqFocused && (
         <FocusTransport
           tempo={project.tempo}
           playing={playing}
@@ -159,7 +162,7 @@ export function Workstation() {
           onPlay={togglePlay}
           onStop={stop}
           onExit={() => setFocusMode(null)}
-          label={focusMode === "mixer" ? "Focus Mixer" : "Focus Sequencer"}
+          label="Focus Sequencer"
         />
       )}
       {!focused && (
@@ -209,11 +212,39 @@ export function Workstation() {
         </div>
       )}
       {page === "mixer" && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <MixerPage
-            focus={focusMode === "mixer"}
+            focus={false}
             onToggleFocus={() => setFocusMode((m) => (m === "mixer" ? null : "mixer"))}
           />
+          {mixerFocused && (
+            <div
+              className="mixer-focus-stage"
+              role="dialog"
+              aria-label="Focus Mixer"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setFocusMode(null);
+              }}
+            >
+              <div className="mixer-focus-window">
+                <div className="mixer-focus-window__bar">
+                  <p className="font-display text-sm tracking-[0.18em] uppercase text-led">Focus Mixer</p>
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="hw-btn" onClick={togglePlay} title="Space">
+                      {playing ? "Pause" : "Play"}
+                    </button>
+                    <button type="button" className="hw-btn" onClick={stop}>
+                      Stop
+                    </button>
+                    <button type="button" className="hw-btn on" onClick={() => setFocusMode(null)} title="Esc">
+                      Exit Focus
+                    </button>
+                  </div>
+                </div>
+                <MixerPage focus />
+              </div>
+            </div>
+          )}
         </div>
       )}
       {page === "song" && (

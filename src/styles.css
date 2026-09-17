@@ -401,17 +401,9 @@ select.hw-select {
 }
 
 
-/* Mixer focus — fill width, taller faders, colored bus strips */
-.mixer-focus .fader-focus {
-  height: min(28vh, 180px);
-  width: 10px;
-}
 .fader-send {
   height: 56px;
   width: 6px;
-}
-.mixer-focus .fader-send {
-  height: min(12vh, 88px);
 }
 .fader-send-rev::-webkit-slider-thumb,
 .fader-send-rev::-moz-range-thumb {
@@ -453,10 +445,6 @@ select.hw-select {
   color: var(--color-led);
   border-color: color-mix(in oklab, var(--color-led) 55%, transparent);
 }
-.mixer-focus .knob-dial--sm {
-  width: 28px;
-  height: 28px;
-}
 
 .ms-btn {
   display: inline-flex;
@@ -490,27 +478,46 @@ select.hw-select {
   border-color: color-mix(in oklab, var(--color-led) 55%, transparent);
   box-shadow: 0 0 8px color-mix(in oklab, var(--color-led) 25%, transparent);
 }
-.mixer-focus {
+
+/* Focus Mixer — same content as normal, in a slightly shorter floating window */
+.mixer-focus-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 2vw;
+  background: color-mix(in oklab, #050607 55%, transparent);
+  backdrop-filter: blur(2px);
+}
+.mixer-focus-window {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 96vw);
+  height: min(78dvh, 860px);
+  max-height: 82dvh;
   overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--color-led) 28%, transparent);
+  background: linear-gradient(180deg, #1a1d22, #121418 40%, #0e1013);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px color-mix(in oklab, #fff 4%, transparent);
 }
-.mixer-focus .mixer-bus-panels {
-  flex: 0 0 auto;
-  min-height: 7.5rem;
+.mixer-focus-window__bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-panel-border) 80%, transparent);
+  background: color-mix(in oklab, #0d0f12 70%, transparent);
 }
-.mixer-focus .meter-focus {
-  flex: 0 0 auto;
-}
-.mixer-focus .fader-focus {
-  height: min(14vh, 96px);
-  width: 10px;
+.mixer-focus-window > .mixer-focus-same,
+.mixer-focus-window > div {
+  min-height: 0;
   flex: 1 1 auto;
-  min-height: 48px;
-  max-height: 110px;
 }
-.mixer-focus .knob-dial--sm {
-  width: 26px;
-  height: 26px;
-}
-.mixer-focus .knob span:last-child {
-  display: none;
-}
+
