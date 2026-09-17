@@ -444,3 +444,16 @@ select.hw-select {
 .strip-dly {
   background: linear-gradient(180deg, color-mix(in oklab, var(--color-family-perc) 10%, #171a1f), #121418);
 }
+
+.hw-btn.mute-on {
+  color: var(--color-danger);
+  border-color: color-mix(in oklab, var(--color-danger) 55%, transparent);
+}
+.hw-btn.solo-on {
+  color: var(--color-led);
+  border-color: color-mix(in oklab, var(--color-led) 55%, transparent);
+}
+.mixer-focus .knob-dial--sm {
+  width: 28px;
+  height: 28px;
+}

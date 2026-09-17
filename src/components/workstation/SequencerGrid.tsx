@@ -89,14 +89,14 @@ export function SequencerGrid({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {onToggleFocus && (
+          {onToggleFocus && !focus && (
             <button
               type="button"
-              className={`hw-btn ${focus ? "on" : ""}`}
-              title={focus ? "Quitter le mode Focus (Esc)" : "Focus Sequencer — voir les 16 pistes"}
+              className="hw-btn"
+              title="Focus Sequencer — voir les 16 pistes"
               onClick={onToggleFocus}
             >
-              {focus ? "Exit Focus" : "Focus"}
+              Focus
             </button>
           )}
         </div>

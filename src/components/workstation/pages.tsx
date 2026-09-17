@@ -220,33 +220,19 @@ export function MixerPage({
               title="Level"
               onChange={(e) => updateChannel(i, { volume: Number(e.target.value) })}
             />
-            <div className={`flex w-full justify-center gap-1 ${focus ? "mt-1" : ""}`}>
-              <label className="flex flex-col items-center gap-0.5">
-                <span className="text-[8px] tracking-widest text-family-hat uppercase">Rev</span>
-                <input
-                  className="fader fader-send fader-send-rev"
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={ch.reverbSend}
-                  title="Reverb send"
-                  onChange={(e) => updateChannel(i, { reverbSend: Number(e.target.value) })}
-                />
-              </label>
-              <label className="flex flex-col items-center gap-0.5">
-                <span className="text-[8px] tracking-widest text-family-perc uppercase">Dly</span>
-                <input
-                  className="fader fader-send fader-send-dly"
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={ch.delaySend}
-                  title="Delay send"
-                  onChange={(e) => updateChannel(i, { delaySend: Number(e.target.value) })}
-                />
-              </label>
+            <div className={`flex w-full justify-center gap-2 ${focus ? "mt-1" : ""}`}>
+              <Knob
+                label="Rev"
+                size="sm"
+                value={ch.reverbSend}
+                onChange={(v) => updateChannel(i, { reverbSend: v })}
+              />
+              <Knob
+                label="Dly"
+                size="sm"
+                value={ch.delaySend}
+                onChange={(v) => updateChannel(i, { delaySend: v })}
+              />
             </div>
             <input
               type="range"
@@ -258,12 +244,22 @@ export function MixerPage({
               title="Pan"
               onChange={(e) => updateChannel(i, { pan: Number(e.target.value) })}
             />
-            <div className="flex gap-1">
-              <button type="button" className={`text-[9px] ${ch.mute ? "text-danger" : "text-subtle"}`} onClick={() => updateChannel(i, { mute: !ch.mute })}>
-                M
+            <div className="flex w-full gap-1">
+              <button
+                type="button"
+                className={`hw-btn flex-1 ${ch.mute ? "on mute-on" : ""}`}
+                title="Mute"
+                onClick={() => updateChannel(i, { mute: !ch.mute })}
+              >
+                Mute
               </button>
-              <button type="button" className={`text-[9px] ${ch.solo ? "text-led" : "text-subtle"}`} onClick={() => updateChannel(i, { solo: !ch.solo })}>
-                S
+              <button
+                type="button"
+                className={`hw-btn flex-1 ${ch.solo ? "on solo-on" : ""}`}
+                title="Solo"
+                onClick={() => updateChannel(i, { solo: !ch.solo })}
+              >
+                Solo
               </button>
             </div>
           </div>
