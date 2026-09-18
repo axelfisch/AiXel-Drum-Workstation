@@ -1,0 +1,49 @@
+/* Desktop keeps the one-screen hardware console.
+   Phone / iPad: let the document grow so sequencer and mixer are reachable. */
+.ws-shell {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+@media (max-width: 1023px) {
+  html,
+  body,
+  #app {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ws-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .ws-page {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 72dvh;
+    overflow: visible !important;
+  }
+
+  .ws-page > .flex.min-h-0 {
+    min-height: 36rem;
+  }
+
+  .ws-page .hw-panel.flex-1 {
+    min-height: 28rem;
+  }
+
+  .ws-nav {
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ws-shell > footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
