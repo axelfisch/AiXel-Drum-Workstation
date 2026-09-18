@@ -1,10 +1,5 @@
-/* Desktop keeps the one-screen hardware console.
-   Phone / iPad: let the document grow so sequencer and mixer are reachable. */
-.ws-shell {
-  height: 100dvh;
-  min-height: 100dvh;
-  overflow: hidden;
-}
+/* Desktop: one-screen hardware console.
+   Phone / iPad: document grows so sequencer and mixer stay reachable. */
 
 @media (max-width: 1023px) {
   html,
@@ -17,33 +12,44 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .ws-shell {
-    height: auto;
+  /* Current shell: h-dvh + overflow-hidden. Also matches .ws-shell if present. */
+  .ws-shell,
+  #app > div.h-dvh,
+  #app > div.overflow-hidden.flex.flex-col {
+    height: auto !important;
+    max-height: none !important;
     min-height: 100dvh;
-    overflow: visible;
+    overflow: visible !important;
   }
 
-  .ws-page {
+  .ws-page,
+  #app > div > .flex.flex-1,
+  #app > div > .relative.flex {
     flex: 0 0 auto !important;
     height: auto !important;
     min-height: 72dvh;
     overflow: visible !important;
   }
 
-  .ws-page > .flex.min-h-0 {
+  .ws-page > .flex.min-h-0,
+  #app > div > .relative.flex > .flex.min-h-0 {
     min-height: 36rem;
   }
 
-  .ws-page .hw-panel.flex-1 {
+  .ws-page .hw-panel.flex-1,
+  #app .hw-panel.flex-1 {
     min-height: 28rem;
   }
 
-  .ws-nav {
+  .ws-nav,
+  #app nav {
     flex-wrap: nowrap;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .ws-shell > footer {
+  .ws-shell > footer,
+  #app > div > footer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
